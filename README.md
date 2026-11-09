@@ -57,3 +57,31 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Railway deployment
+
+Railway terminates HTTPS before forwarding requests to the web process. The
+application trusts Railway's forwarded proxy headers, and `Procfile` starts
+Laravel on Railway's assigned `PORT`. The health-check route is `/up`.
+
+Set these variables on the Laravel service in Railway (keep credentials in
+Railway, not in `.env` or source control):
+
+| Variable | Value |
+| --- | --- |
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_URL` | `https://samudera-fresh-strawberry-production.up.railway.app` |
+| `APP_KEY` | Keep the existing production key; do not rotate it casually |
+| `DB_CONNECTION` | `mysql` |
+| `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Values/references from the Railway MySQL service |
+| `SESSION_DRIVER` | `file`, unless a verified persistent session table is configured |
+| `SESSION_SECURE_COOKIE` | `true` |
+| `CACHE_STORE` | `file`, unless a verified cache store is configured |
+| `QUEUE_CONNECTION` | `sync`, unless a queue worker and persistent queue are configured |
+
+This repository currently has no base migrations for `pelanggan`, `petugas`,
+`pesanan`, `detail_pesanan`, `pembayaran`, or `pengiriman`, while later
+migrations alter some of those tables. Do not run `php artisan migrate` on the
+Railway database until the original table schema/migrations have been restored
+and reviewed; a safe baseline cannot be inferred from the current files.
