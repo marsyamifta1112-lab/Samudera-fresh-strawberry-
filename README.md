@@ -4,139 +4,133 @@ Sistem Informasi Penjualan Berbasis Web untuk produk UMKM stroberi Ciwidey.
 
 Repository GitHub: https://github.com/marsyamifta1112-lab/Samudera-fresh-strawberry-
 
-## 1. Deskripsi Aplikasi
+## 1. Judul Proyek
 
-Samudera Fresh Strawberry adalah aplikasi berbasis web yang dikembangkan untuk mendukung proses penjualan produk stroberi asal Ciwidey secara lebih terstruktur dan efisien. Aplikasi ini mencakup proses dari katalog produk, keranjang belanja, pemesanan, pengaturan ongkos kirim, pembayaran, pengiriman, hingga pengelolaan data oleh Admin dan Kurir.
+Samudera Fresh Strawberry
 
-Berdasarkan analisis terhadap source code, aplikasi ini dibangun dengan Laravel 12 dan menggunakan pendekatan full-stack MVC dengan Blade template serta asset frontend dari Vite dan Tailwind CSS. Fokus bisnis yang terlihat pada proyek ini adalah penjualan produk stroberi dengan alur operasional yang mencakup pelanggan, admin, dan kurir.
+## 2. Deskripsi Aplikasi
 
-## 2. Latar Belakang Pengembangan
+Samudera Fresh Strawberry adalah sistem informasi penjualan berbasis web yang dirancang untuk mendukung operasional UMKM stroberi Ciwidey. Aplikasi ini mengelola seluruh proses bisnis dari katalog produk, keranjang belanja, checkout, pembayaran, pengiriman, hingga monitoring data penjualan oleh Admin dan Kurir.
 
-Aplikasi ini dikembangkan sebagai solusi sistem informasi penjualan berbasis web untuk UMKM stroberi Ciwidey. Tujuan utamanya adalah mempermudah proses transaksi produk, mengelola stok, menyesuaikan pengiriman berdasarkan wilayah, serta memberikan pengalaman yang lebih rapi bagi pelanggan dan petugas operasional.
+Aplikasi ini dikembangkan menggunakan Laravel 12 dengan arsitektur MVC, serta front-end berbasis Blade dan Vite. Berdasarkan analisis source code, proyek ini berfokus pada kebutuhan transaksi e-commerce lokal yang melibatkan tiga aktor utama, yaitu pelanggan, admin, dan kurir.
 
-Pada source code, terlihat bahwa aplikasi memiliki fitur yang cukup lengkap untuk bisnis e-commerce skala lokal, termasuk:
+## 3. Latar Belakang Pengembangan
 
-- katalog produk dan pencarian
-- keranjang belanja
-- checkout dengan hitung ongkir wilayah
-- pembayaran dengan unggah bukti transfer
-- penjadwalan dan monitoring pengiriman
-- review pembayaran dan laporan penjualan
-- pengelolaan akun Admin dan Kurir
-- mekanisme pemulihan akun dan reset password
+UMKM stroberi Ciwidey membutuhkan sistem yang dapat membantu proses penjualan secara lebih terstruktur dan efisien. Dalam kegiatan bisnisnya, terdapat kebutuhan untuk mengelola katalog produk, stok, pembelian pelanggan, pembayaran, pengiriman, dan pengawasan administrasi secara digital.
 
-## 3. Tujuan Pengembangan
+Berdasarkan kebutuhan tersebut, aplikasi ini dikembangkan sebagai solusi digital untuk menyederhanakan proses penjualan dan pengelolaan operasional. Sistem ini juga dilengkapi dengan mekanisme keamanan seperti verifikasi email pelanggan, reset password, serta pembatasan akses berdasarkan peran pengguna.
 
-Tujuan dari aplikasi ini adalah untuk:
+## 4. Tujuan Pengembangan
 
-- mempermudah pelanggan dalam mencari, memilih, dan membeli produk stroberi
-- menyediakan sistem transaksi yang terdokumentasi dengan jelas
-- memudahkan Admin dalam manajemen produk, pesanan, pembayaran, dan laporan
-- membantu Kurir dalam mengelola pengiriman dan status pengiriman
+Tujuan pengembangan aplikasi ini adalah untuk:
+
+- mempermudah pelanggan dalam memilih dan membeli produk stroberi
+- menyediakan proses transaksi yang lebih rapi dan terdokumentasi
+- membantu Admin dalam mengelola produk, pesanan, stok, pembayaran, dan laporan
+- memudahkan Kurir dalam memantau dan memperbarui status pengiriman
 - meningkatkan profesionalitas operasional UMKM melalui sistem berbasis web
 
-## 4. Fitur Utama Aplikasi
+## 5. Fitur Utama Aplikasi
 
-Berikut fitur utama yang benar-benar terdeteksi di source code:
+Berikut fitur utama yang terdapat dalam aplikasi sesuai analisis source code:
 
 - katalog produk dengan filter pencarian, kategori, harga, dan berat
-- keranjang belanja dengan penambahan, pembaruan, dan penghapusan item
-- proses checkout dan perhitungan ongkir berdasarkan wilayah pengiriman
-- pengelolaan pesanan dan detail produk per transaksi
-- pembayaran dengan pemilihan metode bank dan unggah bukti transfer
+- keranjang belanja
+- checkout dan perhitungan ongkos kirim berdasarkan wilayah
+- manajemen pesanan dan detail produk
+- mekanisme pembayaran dan unggah bukti transfer
 - verifikasi pembayaran oleh Admin
-- penugasan kurir untuk pengiriman
-- pembaruan status pengiriman dari menunggu sampai diterima
-- halaman laporan penjualan dan ekspor laporan Excel
-- pengelolaan produk, stok, dan harga oleh Admin
-- mekanisme email verifikasi pelanggan
-- kode pemulihan akun pelanggan untuk proses reset password
-- mekanisme reset password Admin dan verifikasi oleh Admin lain
-- fitur return dan pengembalian dana untuk pesanan tertentu
-- dashboard untuk masing-masing aktor
+- penugasan kurir pada pesanan
+- monitoring status pengiriman
+- laporan penjualan dan ekspor laporan Excel
+- pengelolaan produk, stok, dan harga
+- verifikasi email pelanggan
+- reset password dan pemulihan akun
+- fitur return / pengembalian produk dan dana
+- dashboard untuk admin, pelanggan, dan kurir
 
-## 5. Penjelasan Fitur per Aktor
+## 6. Fitur per Aktor
 
-### 5.1 Pelanggan
+### 6.1 Pelanggan
 
-Fitur pelanggan yang terdeteksi dari controller dan route adalah:
+Pelanggan dapat:
 
-- registrasi akun pelanggan
-- login menggunakan username atau email
-- verifikasi email pelanggan melalui tautan yang dikirimkan
-- melihat katalog produk dan detail produk
-- menambah produk ke keranjang belanja
-- melakukan checkout dengan data penerima dan alamat
-- melihat riwayat pesanan dan detail pesanan
-- memilih metode pembayaran dan mengunggah bukti pembayaran
-- melihat halaman pembayaran dan struk
-- mengelola profil akun
-- mengeluarkan kode pemulihan akun untuk proses lupa password
-- menggunakan mekanisme reset password berbasis kode pemulihan
-- mengajukan return/claim produk tertentu jika memenuhi syarat
+- mendaftar dan login ke aplikasi
+- menggunakan username atau email saat login
+- melihat katalog dan detail produk
+- menambah produk ke keranjang
+- melakukan checkout dengan data penerima dan alamat pengiriman
+- melihat riwayat dan detail pesanan
+- memilih metode pembayaran
+- mengunggah bukti pembayaran
+- melihat struk pembayaran dan status pesanan
+- memperbarui profil dan data akun
+- menerima verifikasi email
+- menerbitkan dan menggunakan kode pemulihan akun
+- mengajukan return untuk produk tertentu yang memenuhi syarat
 
-### 5.2 Admin
+### 6.2 Admin
 
-Fitur admin yang terdeteksi:
+Admin dapat:
 
-- dashboard admin dengan ringkasan data penjualan dan pesanan terbaru
-- manajemen produk (tambah, edit, hapus, lihat daftar, stok, harga)
-- pengelolaan inventaris produk
-- melihat daftar pesanan dan detail pesanan
-- menata tarif ongkos kirim per wilayah
-- meninjau bukti pembayaran dan memverifikasi atau menolak pembayaran
-- menugaskan kurir ke pesanan
+- mengakses dashboard utama
+- menambah, mengedit, dan menghapus produk
+- mengelola stok dan harga produk
+- melihat daftar pesanan dan detail transaksi
+- mengatur tarif ongkos kirim per wilayah
+- meninjau dan memverifikasi pembayaran
+- menugaskan kurir untuk pengiriman
 - memperbarui status pengiriman
-- melihat laporan penjualan dan mengekspor laporan dalam format Excel
-- mengelola data petugas dan approval akun kurir
-- mengelola permintaan reset password untuk akun Admin dan Kurir
+- melihat laporan penjualan dan mengekspor laporan Excel
+- mengelola akun petugas dan persetujuan kurir
+- menangani permintaan reset password Admin dan Kurir
 - mengelola return dan status pengembalian dana
-- mengelola profil admin
+- memperbarui profil admin
 
-### 5.3 Kurir
+### 6.3 Kurir
 
-Fitur kurir yang terdeteksi:
+Kurir dapat:
 
-- registrasi akun kurir yang menunggu persetujuan Admin
-- login dengan mekanisme yang memaksa mengganti password sementara jika perlu
-- dashboard informasi pengiriman
+- mendaftar dan menunggu persetujuan Admin
+- login ke aplikasi dan mengelola tugas pengiriman
 - melihat daftar pengiriman dan detail pengiriman
-- memperbarui status pengiriman (`menunggu`, `diproses`, `dikirim`, `diterima`)
-- konfirmasi penerimaan pesanan
-- profil kurir dan pembaruan data diri
-- pengelolaan password dan reset password yang diajukan
+- memperbarui status pengiriman dari menunggu hingga diterima
+- mengonfirmasi penerimaan barang
+- melihat profil dan memperbarui data diri
+- mengelola password dengan mekanisme perubahan password sementara bila diperlukan
 
-## 6. Teknologi dan Tools yang Digunakan
+## 7. Teknologi dan Tools yang Digunakan
 
-Berdasarkan file proyek yang ada, teknologi yang digunakan adalah:
+Teknologi yang terdeteksi dalam proyek adalah:
 
 - PHP 8.2
 - Laravel Framework 12
 - Composer
-- Node.js + npm
+- Node.js dan npm
 - Vite
 - Tailwind CSS
 - Blade Template Engine
-- MySQL / MariaDB (default driver MySQL pada konfigurasi Laravel)
-- SQLite dapat dipilih sebagai alternatif konfigurasi pada Laravel
-- PHP Unit untuk pengujian
-- File system lokal untuk penyimpanan bukti pembayaran dan return
+- MySQL / MariaDB (default konfigurasi pada Laravel)
+- SQLite sebagai opsi konfigurasi basis data
+- PHPUnit untuk pengujian
+- File system lokal untuk menyimpan bukti pembayaran dan return
 
-Beberapa komponen tambahan yang terlihat dalam source code:
+Komponen pendukung yang ada di source code:
 
-- `app/Support/ShippingZoneResolver.php` untuk logika wilayah dan tarif ongkir
+- `app/Support/ShippingZoneResolver.php` untuk pengaturan tarif dan wilayah ongkir
 - `app/Support/RecoveryCode.php` untuk kode pemulihan akun pelanggan
-- `app/Support/OrderMetadata.php` untuk menyimpan metadata return dalam kolom catatan pesanan
+- `app/Support/OrderMetadata.php` untuk menyimpan metadata return
 - `app/Support/CustomerEmailVerificationLink.php` untuk verifikasi email pelanggan
+- `app/Http/Middleware/RoleMiddleware.php` untuk pengaturan hak akses per peran
 
-## 7. Persyaratan Sistem
+## 8. Persyaratan Sistem
 
-Sebelum menjalankan aplikasi, pastikan perangkat Anda memenuhi:
+Sebelum menjalankan aplikasi, pastikan sistem memenuhi ketentuan berikut:
 
-- PHP minimal versi 8.2
+- PHP versi 8.2 ke atas
 - Composer
 - Node.js dan npm
-- Web server lokal (misalnya Laravel built-in server atau server web lain)
+- Web server lokal atau server deployment yang mendukung Laravel
 - Database MySQL/MariaDB atau SQLite
 - Ekstensi PHP yang umum untuk Laravel, seperti:
   - `pdo`
@@ -147,66 +141,66 @@ Sebelum menjalankan aplikasi, pastikan perangkat Anda memenuhi:
   - `xml`
   - `json`
   - `fileinfo`
-  - `gd` atau `imagick` untuk upload gambar
+  - `gd` atau `imagick`
 
-## 8. Cara Instalasi Proyek dari Awal
+## 9. Instalasi Proyek dari Awal
 
 Ikuti langkah berikut:
 
-1. Clone repository dari GitHub:
+1. Clone repository dari GitHub
 
 ```bash
 git clone https://github.com/marsyamifta1112-lab/Samudera-fresh-strawberry-
 cd Samudera-fresh-strawberry-
 ```
 
-2. Instal dependency PHP:
+2. Instal dependency PHP
 
 ```bash
 composer install
 ```
 
-3. Instal dependency frontend:
+3. Instal dependency frontend
 
 ```bash
 npm install
 ```
 
-4. Buat file konfigurasi environment:
+4. Siapkan file `.env`
 
-Karena proyek ini tidak menampilkan file `.env.example` secara eksplisit di struktur direktori, biasanya Anda membuat file `.env` secara manual sesuai contoh yang diberikan di bagian berikut.
+File `.env.example` tidak terlihat jelas di repo saat ini, sehingga konfigurasi `.env` perlu dibuat secara manual sesuai contoh di bagian berikut.
 
-5. Generate key aplikasi:
+5. Generate application key
 
 ```bash
 php artisan key:generate
 ```
 
-6. Konfigurasi database pada `.env` sesuai database lokal Anda.
+6. Konfigurasi database pada file `.env`
 
-7. Jalankan migrasi database:
+7. Jalankan migrasi database
 
 ```bash
 php artisan migrate
 ```
 
-8. Jika Anda ingin membangun asset frontend produksi:
+8. Jika ingin membangun asset frontend untuk produksi, jalankan:
 
 ```bash
 npm run build
 ```
 
-9. Jalankan aplikasi:
+9. Jalankan aplikasi lokal
 
 ```bash
 php artisan serve
 ```
 
-> Catatan: Di file `composer.json`, terdapat script `composer run setup` yang secara umum dipakai untuk menginstal dependency, membuat `.env`, menjalankan `key:generate`, migrasi, dan build frontend. Namun karena file `.env.example` tidak terlihat pada repositori saat ini, proses manual pembuatan `.env` tetap diperlukan agar langkah tersebut berjalan dengan benar.
+Salah satu script yang tersedia di `composer.json` yaitu `composer run setup` juga bisa digunakan untuk pendirian awal; namun karena file `.env.example` tidak terlihat secara eksplisit dalam struktur saat ini, konfigurasi `.env` tetap perlu dilakukan secara manual agar proses berjalan benar.
 
-## 9. Konfigurasi File `.env`
+## 10. Konfigurasi File `.env`
 
-Berikut contoh konfigurasi `.env` yang sesuai dengan kebutuhan aplikasi. Sesuaikan nilai sesuai environment Anda dan jangan menyimpan credential asli pada repositori publik.
+Berikut contoh konfigurasi `.env` yang dapat digunakan untuk menjalankan aplikasi di lingkungan lokal:
 
 ```env
 APP_NAME="Samudera Fresh Strawberry"
@@ -241,13 +235,13 @@ APP_TIMEZONE=Asia/Jakarta
 
 Catatan penting:
 
-- Nilai `APP_KEY` harus dihasilkan dengan perintah `php artisan key:generate`.
-- Jika Anda menggunakan database lain, sesuaikan `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD`.
-- Fitur verifikasi email dan pemulihan akun membutuhkan konfigurasi email yang benar agar tautan dapat dikirim.
+- `APP_KEY` harus dihasilkan melalui perintah `php artisan key:generate`
+- sesuaikan parameter database sesuai environment Anda
+- konfigurasi email perlu diatur agar fitur verifikasi email dan pemulihan akun dapat berfungsi dengan benar
 
-## 10. Cara Konfigurasi dan Menjalankan Database
+## 11. Konfigurasi dan Menjalankan Database
 
-Aplikasi ini menggunakan database relasional dengan tabel utama yang terbentuk melalui migration Laravel. Pada source code, migration yang terlihat adalah:
+Proyek ini menggunakan basis data relasional dengan migrasi Laravel. Tabel utama yang terlihat pada source code meliputi:
 
 - `produk`
 - `pelanggan`
@@ -258,101 +252,68 @@ Aplikasi ini menggunakan database relasional dengan tabel utama yang terbentuk m
 - `pengiriman`
 - `ongkir_wilayah`
 - `admin_password_recovery_requests`
-- `returns` / metadata return yang disimpan pada kolom `catatan` pesanan
 
 Langkah konfigurasi database:
 
-1. Buat database baru di MySQL/MariaDB.
-2. Atur nilai `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` di `.env`.
-3. Jalankan migrasi:
+1. buat database baru di MySQL/MariaDB
+2. atur nilai `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` pada file `.env`
+3. jalankan migrasi
 
 ```bash
 php artisan migrate
 ```
 
-4. Jika Anda menjalankan aplikasi untuk pertama kali, periksa apakah kolom dan relasi yang diharapkan sudah terbentuk dengan benar.
-5. Data wilayah ongkir dan tarif awal akan ditambahkan melalui migrasi tertentu, lalu dapat diubah melalui menu Admin.
+4. Pastikan tabel dan kolom yang dibutuhkan berhasil dibuat
+5. Setelah migrasi, data wilayah ongkir dan tarif awal akan tersedia melalui migrasi terkait, dan dapat diubah melalui panel Admin
 
-> Informasi penting: source code tampaknya mengandung serangkaian migration yang menambahkan kolom ke tabel yang sudah ada. Oleh karena itu, sebaiknya migrasi dijalankan dalam urutan yang benar sesuai Laravel dan tidak dibatalkan secara asal.
+> Informasi penting: struktur migration tampak berisi serangkaian perubahan terhadap tabel yang sudah ada, sehingga perlu dijalankan dalam konteks Laravel yang benar dan hati-hati.
 
-## 11. Cara Menjalankan Aplikasi Secara Lokal
+## 12. Menjalankan Aplikasi Secara Lokal
 
-Untuk menjalankan aplikasi tanpa build produksi, lakukan:
+Untuk menjalankan aplikasi lokal:
 
 ```bash
 php artisan serve
 ```
 
-Akses aplikasi di browser:
+Akses aplikasi melalui browser di:
 
 ```text
 http://localhost:8000
 ```
 
-Jika Anda ingin menjalankan semua kebutuhan pengembangan sekaligus (server Laravel, queue, dan frontend Vite), gunakan:
+Jika ingin menjalankan seluruh kebutuhan pengembangan sekaligus, gunakan:
 
 ```bash
 composer run dev
 ```
 
-Untuk build frontend produksi:
+Untuk build asset produksi:
 
 ```bash
 npm run build
 ```
 
-## 12. Struktur Folder dan Penjelasan
+## 13. Struktur Folder Proyek
 
 ```text
 samudera_fresh_strawberry/
 ├─ app/
 │  ├─ Console/
-│  │  └─ Commands/
 │  ├─ Http/
 │  │  ├─ Controllers/
-│  │  │  ├─ AuthController.php
-│  │  │  ├─ AdminController.php
-│  │  │  ├─ KurirController.php
-│  │  │  ├─ PelangganController.php
-│  │  │  ├─ ProdukController.php
-│  │  │  ├─ CheckoutController.php
-│  │  │  ├─ PembayaranController.php
-│  │  │  ├─ ReturnController.php
-│  │  │  └─ ...
-│  │  └─ Middleware/
-│  │     └─ RoleMiddleware.php
-│  ├─ Mail/
-│  │  ├─ CustomerEmailVerification.php
-│  │  └─ CustomerRecoveryCode.php
-│  ├─ Models/
-│  │  ├─ Produk.php
-│  │  ├─ Pelanggan.php
-│  │  ├─ Petugas.php
-│  │  ├─ Pesanan.php
-│  │  ├─ Pembayaran.php
-│  │  ├─ Pengiriman.php
+│  │  ├─ Middleware/
 │  │  └─ ...
+│  ├─ Mail/
+│  ├─ Models/
 │  └─ Support/
-│     ├─ CustomerEmailVerificationLink.php
-│     ├─ OrderMetadata.php
-│     ├─ RecoveryCode.php
-│     └─ ShippingZoneResolver.php
 ├─ bootstrap/
 ├─ config/
-│  ├─ app.php
-│  ├─ auth.php
-│  ├─ database.php
-│  ├─ mail.php
-│  └─ ...
 ├─ database/
 │  ├─ factories/
 │  ├─ migrations/
 │  └─ seeders/
 ├─ docs/
-│  ├─ Manual-Book-Admin-Samudera-Fresh-Strawberry.md
-│  ├─ Manual-Book-Kurir-Samudera-Fresh-Strawberry.md
-│  ├─ Manual-Book-Pelanggan-Samudera-Fresh-Strawberry.md
-│  └─ Manual-Book-Samudera-Fresh-Strawberry.md
 ├─ public/
 │  ├─ images/
 │  └─ index.php
@@ -360,14 +321,6 @@ samudera_fresh_strawberry/
 │  ├─ css/
 │  ├─ js/
 │  └─ views/
-│     ├─ admin/
-│     ├─ kurir/
-│     ├─ pelanggan/
-│     ├─ passwords/
-│     ├─ produk.blade.php
-│     ├─ checkout.blade.php
-│     ├─ pembayaran.blade.php
-│     └─ ...
 ├─ routes/
 │  ├─ api.php
 │  ├─ web.php
@@ -388,20 +341,18 @@ samudera_fresh_strawberry/
 
 Penjelasan singkat:
 
-- `app/` berisi logika aplikasi, controller, model, dan support class.
-- `routes/` berisi definisi rute web dan API.
-- `resources/views/` berisi tampilan Blade untuk pelanggan, admin, kurir, login, checkout, dan laporan.
-- `database/migrations/` berisi skema database dan perubahan struktur tabel.
-- `public/` berisi asset publik dan gambar aplikasi.
-- `docs/` berisi manual book yang dapat digunakan untuk dokumentasi pengguna.
-- `config/` berisi konfigurasi Laravel seperti database, mail, session, dan auth.
+- `app/` berisi logika bisnis, controller, model, middleware, dan class pendukung
+- `routes/` berisi rute aplikasi web dan API
+- `resources/views/` berisi tampilan Blade untuk login, katalog, checkout, pembayaran, admin, kurir, dan lain-lain
+- `database/migrations/` berisi skema dan perubahan tabel database
+- `public/` berisi file publik seperti gambar dan entry point aplikasi
+- `docs/` berisi manual book pengguna
+- `config/` berisi konfigurasi Laravel seperti database, mail, auth, dan session
 
-## 13. Penjelasan Database dan Tabel Utama
+## 14. Database dan Tabel Utama
 
-Berikut tabel utama yang terdeteksi dari migration dan model:
-
-### `produk`
-Menyimpan data produk stroberi, seperti:
+### 14.1 Tabel `produk`
+Menyimpan data produk, seperti:
 
 - `id_produk`
 - `nama_produk`
@@ -411,8 +362,8 @@ Menyimpan data produk stroberi, seperti:
 - `berat_gram`
 - `foto_produk`
 
-### `pelanggan`
-Menyimpan data pelanggan:
+### 14.2 Tabel `pelanggan`
+Menyimpan data pelanggan, seperti:
 
 - `id_pelanggan`
 - `nama_pelanggan`
@@ -425,8 +376,8 @@ Menyimpan data pelanggan:
 - `recovery_code_attempts`
 - `recovery_code_locked_until`
 
-### `petugas`
-Menyimpan data karyawan dan kurir:
+### 14.3 Tabel `petugas`
+Menyimpan data admin dan kurir, seperti:
 
 - `id_petugas`
 - `nama_petugas`
@@ -434,13 +385,13 @@ Menyimpan data karyawan dan kurir:
 - `password`
 - `no_telp`
 - `alamat`
-- `role` (`Admin` atau `Kurir`)
+- `role`
 - `status_akun`
 - `must_change_password`
 - `password_reset_status`
 
-### `pesanan`
-Menyimpan data transaksi utama:
+### 14.4 Tabel `pesanan`
+Menyimpan data transaksi utama, seperti:
 
 - `id_pesanan`
 - `id_pelanggan`
@@ -454,8 +405,8 @@ Menyimpan data transaksi utama:
 - `no_hp`
 - `catatan`
 
-### `detail_pesanan`
-Menyimpan rincian produk per pesanan:
+### 14.5 Tabel `detail_pesanan`
+Menyimpan rincian setiap produk dalam pesanan, seperti:
 
 - `id_detail`
 - `id_pesanan`
@@ -464,8 +415,8 @@ Menyimpan rincian produk per pesanan:
 - `harga`
 - `subtotal`
 
-### `pembayaran`
-Menyimpan data pembayaran pesanan:
+### 14.6 Tabel `pembayaran`
+Menyimpan data pembayaran pesanan, seperti:
 
 - `id_pembayaran`
 - `id_pesanan`
@@ -477,8 +428,8 @@ Menyimpan data pembayaran pesanan:
 - `nomor_struk`
 - `tanggal_verifikasi`
 
-### `pengiriman`
-Menyimpan data pengiriman:
+### 14.7 Tabel `pengiriman`
+Menyimpan data pengiriman untuk kurir, seperti:
 
 - `id_pengiriman`
 - `id_pesanan`
@@ -489,23 +440,20 @@ Menyimpan data pengiriman:
 - `status_pengiriman`
 - `tanggal_pengiriman`
 
-### `ongkir_wilayah`
-Menyimpan tarif ongkir per wilayah, seperti:
+### 14.8 Tabel `ongkir_wilayah`
+Menyimpan tarif ongkos kirim berdasarkan wilayah, antara lain:
 
 - Ciwidey & Rancabali
 - Pasirjambu & Soreang
 - Bandung Raya
 - Luar Bandung Raya
 
-### `admin_password_recovery_requests`
-Digunakan untuk model penyetujan reset password akun Admin oleh Admin lain.
+### 14.9 Metadata return
+Fitur return tidak sepenuhnya menggunakan tabel khusus; metadata return disimpan dalam kolom `catatan` pada tabel `pesanan` dengan format JSON melalui class `OrderMetadata`.
 
-### Metadata return
-Pada source code, mekanisme return tidak disimpan dalam tabel terpisah secara penuh; metadata return dikelola melalui kolom `catatan` di tabel `pesanan` dengan struktur JSON. Fitur ini diatur oleh `app/Support/OrderMetadata.php`.
+## 15. Deployment dan Hosting
 
-## 14. Informasi Deployment dan Hosting
-
-File `Procfile` yang ada di root repository menunjukkan bahwa aplikasi ini didesain untuk dijalankan pada platform hosting yang menyediakan variabel `PORT`, seperti Railway, Heroku, atau lingkungan serupa.
+File `Procfile` menunjukkan bahwa aplikasi ini dirancang untuk dijalankan pada platform hosting yang mendukung variabel `PORT`, seperti Railway atau platform sejenis.
 
 Isi `Procfile` adalah:
 
@@ -513,33 +461,33 @@ Isi `Procfile` adalah:
 web: php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
 ```
 
-Beberapa hal yang dapat diatur di lingkungan deployment:
+Beberapa variabel deployment yang biasanya perlu disiapkan:
 
 - `APP_ENV=production`
 - `APP_DEBUG=false`
-- `APP_URL` sesuai domain hosting
+- `APP_URL` sesuai domain deployment
 - `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
 - `SESSION_DRIVER`
 - `CACHE_STORE`
 - `QUEUE_CONNECTION`
-- `MAIL_*` untuk email verifikasi
+- `MAIL_*` untuk fitur verifikasi email
 
-> Informasi domain produksi dan detail hosting final belum tercantum secara eksplisit di source code. Oleh karena itu, URL produksi spesifik dan detail konfigurasi hosting perlu dikonfirmasi ke pengembang/pemilik proyek.
+> URL produksi dan detail konfigurasi hosting final belum tercantum secara eksplisit di source code. Informasi tersebut perlu dikonfirmasi kembali ke pengembang atau pemilik proyek.
 
-## 15. Tim Pengembang
+## 16. Tim Pengembang
 
 Proyek ini dikembangkan oleh:
 
 - Kelompok Twinbyte
 - SMK Budi Bakti Ciwidey
 
-> Informasi nama anggota tim individu dan detail kontak tim belum tercantum secara eksplisit di source code. Informasi tersebut perlu dikonfirmasi dari pembuat proyek jika ingin ditampilkan pada dokumentasi publik.
+> Informasi nama anggota tim, kontak, dan detail penanggung jawab proyek belum tercantum secara eksplisit di source code. Informasi ini perlu dikonfirmasi kembali jika ingin ditampilkan secara lengkap di dokumentasi publik.
 
-## 16. Penutup
+## 17. Penutup
 
-Samudera Fresh Strawberry merupakan sistem informasi penjualan berbasis web yang dirancang untuk mendukung operasional UMKM stroberi Ciwidey secara lebih modern, terstruktur, dan efisien. Aplikasi ini mencakup seluruh alur bisnis utama, mulai dari katalog produk, pemesanan, pembayaran, pengiriman, hingga pengelolaan data oleh Admin dan Kurir.
+Samudera Fresh Strawberry merupakan aplikasi berbasis web yang dirancang untuk mendukung proses penjualan produk stroberi Ciwidey secara lebih modern, tertata, dan efisien. Aplikasi ini mencakup seluruh alur bisnis utama, mulai dari katalog produk, pemesanan, pembayaran, pengiriman, hingga pengelolaan data oleh Admin dan Kurir.
 
-Dokumentasi ini dibuat berdasarkan analisis source code yang tersedia di repositori. Semoga README ini dapat menjadi acuan resmi untuk kebutuhan penilaian Sprint Akhir, pengelolaan proyek, maupun publikasi di GitHub.
+Dokumen ini dibuat berdasarkan hasil analisis terhadap source code yang tersedia pada repositori. Semoga README ini dapat menjadi dokumentasi resmi yang siap digunakan untuk kebutuhan GitHub, penilaian akhir, dan pengelolaan proyek di masa depan.
 
 Terima kasih atas perhatian dan dukungannya.
 
