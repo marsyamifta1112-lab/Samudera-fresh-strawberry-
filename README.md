@@ -2,6 +2,17 @@
 
 Sistem Informasi Penjualan Berbasis Web untuk produk UMKM stroberi Ciwidey.
 
+## Tim Pengembangan Twinbyte
+
+| Nama | Peran | NISN |
+|---|---|---|
+| Marsya Miftasari | Backend Architect & Database Administrator | 00988968564 |
+| Elsa Anindita | Frontend Specialist & UI/UX Designer | 00988968564 |
+
+- **Pembimbing UKK:** Nurdiansyah Permana
+- **Sekolah:** SMK Budi Bakti Ciwidey
+- **Tahun:** 2026
+
 Repository GitHub: https://github.com/marsyamifta1112-lab/Samudera-fresh-strawberry-
 
 ## 1. Judul Proyek
@@ -494,4 +505,3 @@ Terima kasih atas perhatian dan dukungannya.
 ---
 
 © 2026 Samudera Fresh Strawberry — Kelompok Twinbyte, SMK Budi Bakti Ciwidey.
-
