@@ -63,6 +63,14 @@
             font-size: 13px;
         }
 
+        .admin-recovery {
+            display: block;
+            width: fit-content;
+            margin-top: 16px;
+            color: #205936;
+            font-size: 13px;
+        }
+
         .copyright {
             margin-top: auto;
             color: #555;
@@ -105,9 +113,11 @@
                     Segar • Lezat • Alami
                 </p>
 
-                <!-- Tombol menuju halaman Login -->
-                <a href="/login" class="btn">
+                <a href="{{ route('login') }}" class="btn">
                     Mulai Belanja
+                </a>
+                <a href="{{ route('admin.password.request') }}" class="admin-recovery">
+                    Admin? Lupa Password
                 </a>
 
             </div>
