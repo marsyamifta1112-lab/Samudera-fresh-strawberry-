@@ -899,6 +899,14 @@ class AdminTest extends TestCase
         ]);
     }
 
+    public function test_admin_password_recovery_form_expires_a_stale_recovery_cookie(): void
+    {
+        $this->withCookie('admin_password_recovery_v2', 'stale-token')
+            ->get(route('admin.password.request'))
+            ->assertOk()
+            ->assertCookieExpired('admin_password_recovery_v2');
+    }
+
     public function test_admin_password_recovery_requires_another_admin_and_hashes_the_new_password(): void
     {
         DB::table('petugas')->insert([

@@ -40,13 +40,13 @@ class AdminPasswordResetController extends Controller
         }
 
         if ($recoveryRequest?->status === 'Ditolak') {
-            return view('passwords.admin-request', [
+            return response()->view('passwords.admin-request', [
                 'pending' => false,
                 'requestedUsername' => null,
             ])->withCookie($this->forgetRecoveryCookie());
         }
 
-        return view('passwords.admin-request', [
+        return response()->view('passwords.admin-request', [
             'pending' => false,
             'requestedUsername' => null,
         ])->withCookie($this->forgetRecoveryCookie());
