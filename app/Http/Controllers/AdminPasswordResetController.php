@@ -19,8 +19,6 @@ class AdminPasswordResetController extends Controller
 
     public function requestForm(Request $request)
     {
-        abort_if($request->session()->has('role'), 403);
-
         $recoveryRequest = $this->currentRequest($request);
 
         if ($recoveryRequest?->status === 'Disetujui') {
@@ -56,8 +54,6 @@ class AdminPasswordResetController extends Controller
 
     public function submitRequest(Request $request)
     {
-        abort_if($request->session()->has('role'), 403);
-
         $data = $request->validate([
             'username' => ['required', 'string', 'max:50'],
         ]);
@@ -145,8 +141,6 @@ class AdminPasswordResetController extends Controller
 
     public function resetForm(Request $request)
     {
-        abort_if($request->session()->has('role'), 403);
-
         $recoveryRequest = $this->currentRequest($request);
 
         if (! $recoveryRequest || $recoveryRequest->status !== 'Disetujui') {
@@ -169,8 +163,6 @@ class AdminPasswordResetController extends Controller
 
     public function reset(Request $request)
     {
-        abort_if($request->session()->has('role'), 403);
-
         $recoveryRequest = $this->currentRequest($request);
         if (! $recoveryRequest || $recoveryRequest->status !== 'Disetujui') {
             return redirect()
@@ -244,7 +236,8 @@ class AdminPasswordResetController extends Controller
                 ->withCookie($this->forgetRecoveryCookie());
         }
 
-        $request->session()->regenerate();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect()
             ->route('login')

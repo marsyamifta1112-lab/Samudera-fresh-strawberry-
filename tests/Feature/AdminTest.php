@@ -869,6 +869,36 @@ class AdminTest extends TestCase
             ->assertSee('Alamat Baru');
     }
 
+    public function test_authenticated_admin_can_open_and_submit_a_password_recovery_request(): void
+    {
+        DB::table('petugas')->insert([
+            'id_petugas' => 1,
+            'nama_petugas' => 'Admin Uji',
+            'username' => 'admin-uji',
+            'password' => Hash::make('password123'),
+            'role' => 'Admin',
+            'status_akun' => 'Aktif',
+        ]);
+
+        $this->withSession([
+            'id_petugas' => 1,
+            'nama_petugas' => 'Admin Uji',
+            'role' => 'Admin',
+        ])->get(route('admin.password.request'))
+            ->assertOk()
+            ->assertSee('Username Admin');
+
+        $this->post(route('admin.password.verify'), [
+            'username' => 'admin-uji',
+        ])->assertRedirect(route('admin.password.request'))
+            ->assertCookie('admin_password_recovery_v2');
+
+        $this->assertDatabaseHas('permintaan_reset_password_admin', [
+            'admin_id' => 1,
+            'status' => 'Menunggu Verifikasi',
+        ]);
+    }
+
     public function test_admin_password_recovery_requires_another_admin_and_hashes_the_new_password(): void
     {
         DB::table('petugas')->insert([
@@ -939,8 +969,11 @@ class AdminTest extends TestCase
             ->assertRedirect(route('admin.password.reset'))
             ->assertSessionMissing('role');
 
-        $this->flushSession();
-        $this->get(route('admin.password.reset'))
+        $this->withSession([
+            'id_petugas' => 2,
+            'nama_petugas' => 'Admin Pemilik',
+            'role' => 'Admin',
+        ])->get(route('admin.password.reset'))
             ->assertOk()
             ->assertSee('sudah disetujui Admin lain');
 
@@ -949,7 +982,8 @@ class AdminTest extends TestCase
             'password_confirmation' => 'password-baru-456',
         ]);
         $resetResponse->assertRedirect(route('login'))
-            ->assertCookieExpired('admin_password_recovery_v2');
+            ->assertCookieExpired('admin_password_recovery_v2')
+            ->assertSessionMissing('role');
 
         $updatedAdmin = DB::table('petugas')->where('id_petugas', 2)->first();
         $this->assertTrue(Hash::check('password-baru-456', $updatedAdmin->password));
