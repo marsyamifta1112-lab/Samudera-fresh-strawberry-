@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembayaran Transfer | Samudera Fresh Strawberry</title>
+    <title>Pembayaran {{ $pembayaran->metode_pembayaran === 'QRIS' ? 'QRIS' : 'Transfer' }} | Samudera Fresh Strawberry</title>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #fffdf8; color: #292929; font-family: Arial, Helvetica, sans-serif; }
@@ -102,7 +102,7 @@
     @include('partials.navigation', ['active' => 'keranjang'])
 
     <main>
-        <h1>Pembayaran Transfer</h1>
+        <h1>Pembayaran {{ $pembayaran->metode_pembayaran === 'QRIS' ? 'QRIS' : 'Transfer' }}</h1>
         <p class="order-id">Pesanan #{{ $pesanan->id_pesanan }}</p>
 
         @if (session('success'))
@@ -122,35 +122,40 @@
         @endif
 
         <section class="panel">
-            <h2>Bank Pengirim</h2>
-            <p class="muted">Pilih bank yang kamu gunakan untuk transfer. Transfer ditujukan ke rekening BCA Samudera Fresh Strawberry di bawah; pelanggan dari bank lain juga bisa transfer ke rekening tersebut.</p>
-            @if ($pesanan->ongkir !== null)
-            <form action="{{ route('pembayaran.method', $pesanan->id_pesanan) }}" method="POST">
-                @csrf
-                <div class="method-row">
-                    @foreach (['BCA', 'BRI', 'BNI', 'Mandiri'] as $bank)
-                        <label class="method">
-                            <input
-                                type="radio"
-                                name="metode_pembayaran"
-                                value="{{ $bank }}"
-                                {{ $pembayaran->metode_pembayaran === $bank ? 'checked' : '' }}
-                                {{ $pembayaran->bukti_pembayaran ? 'disabled' : 'required' }}
-                            >
-                            {{ $bank }}
-                        </label>
-                    @endforeach
-                </div>
-                @if (!$pembayaran->bukti_pembayaran)
-                    <button type="submit" class="button bank-submit">Simpan Bank Pengirim</button>
-                @endif
-            </form>
+            @if ($pembayaran->metode_pembayaran === 'QRIS')
+                <h2>Bayar dengan QRIS</h2>
+                <p class="muted">Gunakan kode QRIS resmi Samudera Fresh Strawberry dari Admin. Setelah pembayaran berhasil, unggah bukti pembayaran untuk verifikasi.</p>
+            @else
+                <h2>Bank Pengirim</h2>
+                <p class="muted">Pilih bank yang kamu gunakan untuk transfer. Transfer ditujukan ke rekening BCA Samudera Fresh Strawberry di bawah; pelanggan dari bank lain juga bisa transfer ke rekening tersebut.</p>
+                @if ($pesanan->ongkir !== null)
+                    <form action="{{ route('pembayaran.method', $pesanan->id_pesanan) }}" method="POST">
+                        @csrf
+                        <div class="method-row">
+                            @foreach (['BCA', 'BRI', 'BNI', 'Mandiri'] as $bank)
+                                <label class="method">
+                                    <input
+                                        type="radio"
+                                        name="metode_pembayaran"
+                                        value="{{ $bank }}"
+                                        {{ $pembayaran->metode_pembayaran === $bank ? 'checked' : '' }}
+                                        {{ $pembayaran->bukti_pembayaran ? 'disabled' : 'required' }}
+                                    >
+                                    {{ $bank }}
+                                </label>
+                            @endforeach
+                        </div>
+                        @if (!$pembayaran->bukti_pembayaran)
+                            <button type="submit" class="button bank-submit">Simpan Bank Pengirim</button>
+                        @endif
+                    </form>
                 @else
                     <div class="alert error">Admin akan menentukan ongkir berdasarkan alamat pengiriman. Silakan kembali setelah total pembayaran diperbarui.</div>
                 @endif
 
-            <label class="account-label">Nomor Rekening</label>
-            <div class="account">7829 8832 8274 (a.n. Samudera Fresh Strawberry)</div>
+                <label class="account-label">Nomor Rekening</label>
+                <div class="account">7829 8832 8274 (a.n. Samudera Fresh Strawberry)</div>
+            @endif
 
             <div class="amount-row">
                 <div>
@@ -176,15 +181,17 @@
                 <a class="button" href="{{ route('pembayaran.receipt', $pesanan->id_pesanan) }}">Cetak Struk</a>
             @elseif ($pembayaran->bukti_pembayaran)
                 <div class="alert">
-                    Bukti transfer sudah diterima dan sedang menunggu verifikasi.
+                    Bukti pembayaran sudah diterima dan sedang menunggu verifikasi.
                 </div>
             @elseif ($pesanan->ongkir === null)
                 <p class="muted">Unggah bukti pembayaran setelah ongkir ditetapkan Admin.</p>
+            @elseif ($pembayaran->metode_pembayaran === 'Transfer')
+                <p class="muted">Pilih dan simpan bank pengirim sebelum mengunggah bukti pembayaran.</p>
             @else
-                <p class="muted">Transfer sesuai nominal di atas, lalu unggah bukti pembayaran.</p>
+                <p class="muted">{{ $pembayaran->metode_pembayaran === 'QRIS' ? 'Bayar sesuai nominal di atas, lalu unggah bukti pembayaran.' : 'Transfer sesuai nominal di atas, lalu unggah bukti pembayaran.' }}</p>
             @endif
 
-            @if ($pembayaran->status_pembayaran !== 'diverifikasi' && $pesanan->ongkir !== null)
+            @if ($pembayaran->status_pembayaran !== 'diverifikasi' && $pesanan->ongkir !== null && $pembayaran->metode_pembayaran !== 'Transfer')
                 <a class="button" href="{{ route('pembayaran.upload.form', $pesanan->id_pesanan) }}">
                     {{ $pembayaran->bukti_pembayaran ? 'Lihat / Unggah Ulang Bukti' : 'Upload Bukti Pembayaran' }}
                 </a>

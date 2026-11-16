@@ -61,6 +61,18 @@
             border-radius: 7px;
             font: inherit;
         }
+        .payment-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .payment-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .payment-option input { width: auto; accent-color: #e93658; }
         textarea { min-height: 90px; resize: vertical; }
         .item {
             display: flex;
@@ -145,6 +157,22 @@
                 <label for="catatan">Catatan (Opsional)</label>
                 <textarea id="catatan" name="catatan"
                     maxlength="1000">{{ old('catatan') }}</textarea>
+
+                <label>Metode Pembayaran</label>
+                <div class="payment-options">
+                    @foreach (['Transfer', 'QRIS'] as $metode)
+                        <label class="payment-option">
+                            <input
+                                type="radio"
+                                name="metode_pembayaran"
+                                value="{{ $metode }}"
+                                {{ old('metode_pembayaran', 'Transfer') === $metode ? 'checked' : '' }}
+                                required
+                            >
+                            {{ $metode }}
+                        </label>
+                    @endforeach
+                </div>
             </section>
 
             <aside class="panel summary-panel">

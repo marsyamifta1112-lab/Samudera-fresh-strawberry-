@@ -91,11 +91,12 @@ class CheckoutController extends Controller
             return $akses;
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'nama_penerima' => 'required|string|max:100',
             'alamat_pengiriman' => 'required|string|max:1000',
             'no_hp' => 'required|string|max:20',
             'catatan' => 'nullable|string|max:1000',
+            'metode_pembayaran' => 'required|in:Transfer,QRIS',
         ]);
 
         $keranjang = session('keranjang', []);
@@ -110,7 +111,7 @@ class CheckoutController extends Controller
         $idPesanan = DB::transaction(function () use (
             $keranjang,
             $idPelanggan,
-            $request
+            $validated
         ) {
             $wilayahOngkir = DB::table('ongkir_wilayah')
                 ->where('aktif', true)
@@ -177,7 +178,7 @@ class CheckoutController extends Controller
 
             $wilayahOngkir = ShippingZoneResolver::resolve(
                 $wilayahOngkir,
-                $request->alamat_pengiriman
+                $validated['alamat_pengiriman']
             );
 
             if (! $wilayahOngkir) {
@@ -199,10 +200,10 @@ class CheckoutController extends Controller
                 'ongkir' => $ongkir,
                 'wilayah_ongkir' => $wilayahOngkir->nama_wilayah,
                 'status_pesanan' => 'menunggu',
-                'nama_penerima' => $request->nama_penerima,
-                'alamat_pengiriman' => $request->alamat_pengiriman,
-                'no_hp' => $request->no_hp,
-                'catatan' => $request->catatan,
+                'nama_penerima' => $validated['nama_penerima'],
+                'alamat_pengiriman' => $validated['alamat_pengiriman'],
+                'no_hp' => $validated['no_hp'],
+                'catatan' => $validated['catatan'] ?? null,
             ], 'id_pesanan');
 
             // Simpan rincian setiap produk yang dipesan
@@ -215,7 +216,7 @@ class CheckoutController extends Controller
             // Buat catatan pembayaran
             DB::table('pembayaran')->insert([
                 'id_pesanan' => $idPesanan,
-                'metode_pembayaran' => 'BCA',
+                'metode_pembayaran' => $validated['metode_pembayaran'],
                 'jumlah_bayar' => $subtotalProduk + $ongkir,
                 'status_pembayaran' => 'menunggu',
             ]);

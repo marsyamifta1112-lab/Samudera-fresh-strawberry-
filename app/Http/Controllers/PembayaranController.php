@@ -104,6 +104,11 @@ class PembayaranController extends Controller
 
         $pembayaran = $this->findOrderPayment($pesanan->id_pesanan);
 
+        if ($pembayaran->metode_pembayaran === 'QRIS') {
+            return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
+                ->with('error', 'Metode pembayaran pesanan ini adalah QRIS, bukan transfer bank.');
+        }
+
         if ($pembayaran->bukti_pembayaran || $pembayaran->status_pembayaran !== 'menunggu') {
             return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
                 ->with('error', 'Bank pengirim tidak dapat diubah setelah bukti pembayaran diunggah.');
@@ -136,6 +141,11 @@ class PembayaranController extends Controller
 
         $pembayaran = $this->findOrderPayment($pesanan->id_pesanan);
 
+        if ($pembayaran->metode_pembayaran === 'Transfer') {
+            return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
+                ->with('error', 'Pilih dan simpan bank pengirim sebelum mengunggah bukti pembayaran.');
+        }
+
         if ($pembayaran->status_pembayaran === 'diverifikasi') {
             return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
                 ->with('error', 'Bukti tidak dapat diunggah ulang setelah pembayaran diverifikasi.');
@@ -167,7 +177,7 @@ class PembayaranController extends Controller
         }
 
         return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
-            ->with('success', 'Bukti transfer berhasil diunggah dan menunggu verifikasi.');
+            ->with('success', 'Bukti pembayaran berhasil diunggah dan menunggu verifikasi.');
     }
 
     private function findCustomerOrder($id): ?object

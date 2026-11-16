@@ -214,6 +214,7 @@ class KeranjangTest extends TestCase
             'alamat_pengiriman' => 'Jalan Ciwidey No. 1',
             'wilayah_ongkir_id' => 1,
             'no_hp' => '081234567890',
+            'metode_pembayaran' => 'Transfer',
         ])
             ->assertRedirect(route('pembayaran.show', 1))
             ->assertSessionHas('success')
@@ -241,10 +242,17 @@ class KeranjangTest extends TestCase
 
         $this->assertDatabaseHas('pembayaran', [
             'id_pesanan' => 1,
-            'metode_pembayaran' => 'BCA',
+            'metode_pembayaran' => 'Transfer',
             'jumlah_bayar' => 60000,
             'status_pembayaran' => 'menunggu',
         ]);
+
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+        ])->post(route('pembayaran.method', 1), [
+            'metode_pembayaran' => 'BCA',
+        ])->assertRedirect(route('pembayaran.show', 1));
 
         $this->withSession([
             'id_pelanggan' => 7,

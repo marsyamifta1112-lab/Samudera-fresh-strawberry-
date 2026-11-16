@@ -9,12 +9,12 @@
             <div><div class="detail-label">Wilayah Tujuan</div><div class="detail-value">{{ $pesanan->wilayah_ongkir ?: 'Tidak tercatat' }}</div></div>
             <div><div class="detail-label">Ongkir</div><div class="detail-value">{{ $pesanan->ongkir === null ? 'Menunggu Admin' : 'Rp'.number_format($pesanan->ongkir, 0, ',', '.') }}</div></div>
             <div><div class="detail-label">Total</div><div class="payment-total">{{ $pesanan->ongkir === null ? 'Menunggu ongkir' : 'Rp'.number_format($pesanan->total_harga, 0, ',', '.') }}</div></div>
-            <div><div class="detail-label">Metode Transfer</div><div class="detail-value">{{ $pesanan->metode_pembayaran ?? '-' }} · {{ $pesanan->nama_pelanggan }}</div></div>
+            <div><div class="detail-label">Metode Pembayaran</div><div class="detail-value">{{ $pesanan->metode_pembayaran ?? '-' }} · {{ $pesanan->nama_pelanggan }}</div></div>
             <div><div class="detail-label">Status</div><span class="status status-{{ $pesanan->status_pembayaran }}">{{ ucfirst($pesanan->status_pembayaran) }}</span></div>
-            <div><div class="detail-label">Bukti Transfer</div>
+            <div><div class="detail-label">Bukti Pembayaran</div>
                 @if ($pesanan->bukti_pembayaran)
                     <a target="_blank" rel="noopener" href="{{ route('admin.payments.proof', $pesanan->id_pesanan) }}">
-                        <img class="payment-proof" src="{{ route('admin.payments.proof', $pesanan->id_pesanan) }}" alt="Bukti transfer pesanan #{{ $pesanan->id_pesanan }}">
+                        <img class="payment-proof" src="{{ route('admin.payments.proof', $pesanan->id_pesanan) }}" alt="Bukti pembayaran pesanan #{{ $pesanan->id_pesanan }}">
                     </a>
                 @else
                     <span class="muted">Belum diunggah</span>

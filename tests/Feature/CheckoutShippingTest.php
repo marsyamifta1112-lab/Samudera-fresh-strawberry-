@@ -56,7 +56,11 @@ class CheckoutShippingTest extends TestCase
             $table->integer('id_pesanan');
             $table->string('metode_pembayaran');
             $table->decimal('jumlah_bayar', 12, 2);
+            $table->dateTime('tanggal_pembayaran')->nullable();
+            $table->string('bukti_pembayaran')->nullable();
             $table->string('status_pembayaran');
+            $table->string('nomor_struk')->nullable();
+            $table->dateTime('tanggal_verifikasi')->nullable();
         });
     }
 
@@ -83,7 +87,9 @@ class CheckoutShippingTest extends TestCase
         ])->get(route('checkout.index'))
             ->assertOk()
             ->assertSee('Wilayah Terdeteksi')
-            ->assertSee('Ongkir dihitung otomatis dari kecamatan/kota pada alamat');
+            ->assertSee('Ongkir dihitung otomatis dari kecamatan/kota pada alamat')
+            ->assertSee('value="Transfer"', false)
+            ->assertSee('value="QRIS"', false);
 
         $this->withSession([
             'id_pelanggan' => 7,
@@ -95,6 +101,7 @@ class CheckoutShippingTest extends TestCase
             'nama_penerima' => 'Penerima Uji',
             'alamat_pengiriman' => 'Jl. Contoh, Kecamatan Soreang, Kabupaten Bandung',
             'no_hp' => '08123456789',
+            'metode_pembayaran' => 'Transfer',
         ])->assertRedirect(route('pembayaran.show', 1));
 
         $this->assertDatabaseHas('pesanan', [
@@ -106,6 +113,67 @@ class CheckoutShippingTest extends TestCase
         $this->assertDatabaseHas('pembayaran', [
             'id_pesanan' => 1,
             'jumlah_bayar' => 24000,
+            'metode_pembayaran' => 'Transfer',
+        ]);
+    }
+
+    public function test_checkout_requires_a_supported_payment_method_and_saves_qris(): void
+    {
+        DB::table('produk')->insert([
+            'id_produk' => 1,
+            'nama_produk' => 'Stroberi',
+            'harga_produk' => 12000,
+            'stok_produk' => 5,
+        ]);
+        DB::table('ongkir_wilayah')->insert([
+            'nama_wilayah' => 'Pasirjambu & Soreang',
+            'tarif' => 10000,
+            'aktif' => true,
+        ]);
+
+        $session = [
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+            'keranjang' => [1 => ['id_produk' => 1, 'jumlah' => 1]],
+        ];
+        $checkout = [
+            'nama_penerima' => 'Penerima Uji',
+            'alamat_pengiriman' => 'Jl. Contoh, Kecamatan Soreang, Kabupaten Bandung',
+            'no_hp' => '08123456789',
+        ];
+
+        $this->withSession($session)
+            ->post(route('checkout.store'), $checkout)
+            ->assertSessionHasErrors('metode_pembayaran');
+        $this->withSession($session)
+            ->post(route('checkout.store'), $checkout + ['metode_pembayaran' => 'Tunai'])
+            ->assertSessionHasErrors('metode_pembayaran');
+        $this->assertDatabaseCount('pesanan', 0);
+
+        $this->withSession($session)
+            ->post(route('checkout.store'), $checkout + ['metode_pembayaran' => 'QRIS'])
+            ->assertRedirect(route('pembayaran.show', 1));
+
+        $this->assertDatabaseHas('pembayaran', [
+            'id_pesanan' => 1,
+            'metode_pembayaran' => 'QRIS',
+        ]);
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+        ])->get(route('pembayaran.show', 1))
+            ->assertOk()
+            ->assertSee('Bayar dengan QRIS')
+            ->assertDontSee('Bank Pengirim');
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+        ])->post(route('pembayaran.method', 1), ['metode_pembayaran' => 'BCA'])
+            ->assertRedirect(route('pembayaran.show', 1))
+            ->assertSessionHas('error');
+        $this->assertDatabaseHas('pembayaran', [
+            'id_pesanan' => 1,
+            'metode_pembayaran' => 'QRIS',
         ]);
     }
 }
