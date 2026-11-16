@@ -104,6 +104,16 @@
         }
         .price { color: #e93658; font-size: 20px; font-weight: bold; }
         .stock { color: #777; font-size: 14px; }
+        .availability-badge {
+            display: inline-block;
+            margin: 0 0 17px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .availability-badge.available { background: #e5f2e9; color: #245b3b; }
+        .availability-badge.sold { background: #fde3e8; color: #b42342; }
         .description-title, .quantity-title { font-size: 15px; font-weight: bold; }
         .description-title { margin-bottom: 7px; }
         .description {
@@ -237,6 +247,9 @@
                     <span class="price">Rp{{ number_format($produk->harga_produk, 0, ',', '.') }}</span>
                     <span class="stock">Stok: {{ $produk->stok_produk }}</span>
                 </div>
+                <span class="availability-badge {{ $dapatDipesan ? 'available' : 'sold' }}">
+                    {{ $dapatDipesan ? 'Tersedia' : 'Habis' }}
+                </span>
 
                 <div class="description-title">Deskripsi</div>
                 <p class="description">
@@ -260,7 +273,7 @@
                                 type="button"
                                 id="quantity-minus"
                                 aria-label="Kurangi jumlah"
-                                {{ $stokTersedia < 1 ? 'disabled' : '' }}
+                                {{ ! $dapatDipesan || $stokTersedia < 1 ? 'disabled' : '' }}
                             >−</button>
                             <input
                                 type="number"
@@ -271,21 +284,22 @@
                                 max="{{ max(1, $stokTersedia) }}"
                                 inputmode="numeric"
                                 aria-label="Jumlah produk"
+                                {{ ! $dapatDipesan || $stokTersedia < 1 ? 'disabled' : '' }}
                                 required
                             >
                             <button
                                 type="button"
                                 id="quantity-plus"
                                 aria-label="Tambah jumlah"
-                                {{ $stokTersedia < 1 ? 'disabled' : '' }}
+                                {{ ! $dapatDipesan || $stokTersedia < 1 ? 'disabled' : '' }}
                             >+</button>
                         </div>
 
                         <button
                             type="submit"
                             class="add-button"
-                            {{ $stokTersedia < 1 ? 'disabled' : '' }}
-                        >Tambah ke Keranjang</button>
+                            {{ ! $dapatDipesan || $stokTersedia < 1 ? 'disabled' : '' }}
+                        >{{ $dapatDipesan && $stokTersedia > 0 ? 'Tambah ke Keranjang' : 'Produk Habis' }}</button>
                     </div>
                 </form>
             </section>
@@ -298,14 +312,15 @@
         const quantityInput = document.getElementById('quantity');
         const minusButton = document.getElementById('quantity-minus');
         const plusButton = document.getElementById('quantity-plus');
+        const canAddProduct = @json($dapatDipesan && $stokTersedia > 0);
 
         function syncQuantityButtons() {
             const quantity = Number(quantityInput.value || quantityInput.min);
             const minimum = Number(quantityInput.min);
             const maximum = Number(quantityInput.max);
 
-            minusButton.disabled = quantity <= minimum;
-            plusButton.disabled = quantity >= maximum;
+            minusButton.disabled = !canAddProduct || quantity <= minimum;
+            plusButton.disabled = !canAddProduct || quantity >= maximum;
         }
 
         minusButton.addEventListener('click', function () {

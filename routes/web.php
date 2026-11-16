@@ -79,6 +79,7 @@ Route::middleware('role:Admin')->prefix('admin')->name('admin.')->group(function
     Route::get('/products/best-sellers', [AdminController::class, 'bestSellers'])->name('products.best-sellers');
     Route::get('/products/create', [AdminController::class, 'createProduct'])->name('products.create');
     Route::post('/products', [AdminController::class, 'storeProduct'])->name('products.store');
+    Route::post('/products/{id}/availability', [AdminController::class, 'toggle'])->whereNumber('id')->name('products.toggle');
     Route::get('/products/{id}/edit', [AdminController::class, 'editProduct'])->name('products.edit');
     Route::put('/products/{id}', [AdminController::class, 'updateProduct'])->name('products.update');
     Route::delete('/products/{id}', [AdminController::class, 'deleteProduct'])->name('products.destroy');

@@ -31,7 +31,7 @@ class ProdukFilterTest extends TestCase
     {
         $this->createProduct('Strawberry Segar 250g', 'Buah segar', 20000, 250);
         $this->createProduct('Keripik Strawberry 100g', 'Keripik renyah', 15000, 100);
-        $this->createProduct('Selai Strawberry 200g', 'Selai rumahan', 25000, 200);
+        $this->createProduct('Selai Strawberry 200g', 'Selai rumahan dengan rasa segar', 25000, 200);
 
         $this->get(route('produk.index', [
             'kategori' => 'keripik',
@@ -53,7 +53,7 @@ class ProdukFilterTest extends TestCase
     {
         $this->createProduct('Strawberry Segar 250g', 'Buah segar', 20000, 250);
         $this->createProduct('Keripik Strawberry 100g', 'Keripik renyah', 15000, 100);
-        $this->createProduct('Selai Strawberry 200g', 'Selai rumahan', 25000, 200);
+        $this->createProduct('Selai Strawberry 200g', 'Selai rumahan dengan rasa segar', 25000, 200);
 
         foreach ([
             'segar' => 'Strawberry Segar 250g',

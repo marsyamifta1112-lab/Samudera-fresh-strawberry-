@@ -308,6 +308,23 @@
             background: #c92547;
         }
 
+        .btn-product:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        .availability-badge {
+            display: inline-block;
+            margin-bottom: 12px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .availability-badge.available { background: #e5f2e9; color: #245b3b; }
+        .availability-badge.sold { background: #fde3e8; color: #b42342; }
+
         .package-card {
             background: #205936;
             color: white;
@@ -561,6 +578,7 @@
                         }
 
                         $isPaket = str_contains($nama, 'paket');
+                        $isAvailable = (bool) ($item->is_available ?? true) && (int) $item->stok_produk > 0;
                     @endphp
 
                     <div class="product-card {{ $isPaket ? 'package-card' : '' }}">
@@ -577,6 +595,10 @@
                                 Rp{{ number_format($item->harga_produk, 0, ',', '.') }}
                             </div>
 
+                            <span class="availability-badge {{ $isAvailable ? 'available' : 'sold' }}">
+                                {{ $isAvailable ? 'Tersedia' : 'Habis' }}
+                            </span>
+
                             @if($item->berat_gram)
                                 <p class="product-weight">{{ number_format($item->berat_gram, 0, ',', '.') }} gram</p>
                             @endif
@@ -591,7 +613,9 @@
                                 >
                                     @csrf
                                     <input type="hidden" name="jumlah" value="1">
-                                    <button type="submit" class="btn-product">Tambah</button>
+                                    <button type="submit" class="btn-product" {{ $isAvailable ? '' : 'disabled' }}>
+                                        {{ $isAvailable ? 'Tambah' : 'Habis' }}
+                                    </button>
                                 </form>
                             </div>
                         </div>

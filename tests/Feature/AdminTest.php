@@ -22,6 +22,7 @@ class AdminTest extends TestCase
             $table->integer('stok_produk')->nullable();
             $table->string('foto_produk')->nullable();
             $table->unsignedInteger('berat_gram')->nullable();
+            $table->boolean('is_available')->default(true);
         });
 
         Schema::create('pelanggan', function (Blueprint $table) {
@@ -346,6 +347,7 @@ class AdminTest extends TestCase
             'id_produk' => $idProduk,
             'nama_produk' => 'Strawberry Segar',
             'stok_produk' => 12,
+            'is_available' => true,
         ]);
 
         $this->actingAsAdmin()
@@ -375,6 +377,48 @@ class AdminTest extends TestCase
             ->assertRedirect(route('admin.products.index'));
 
         $this->assertDatabaseMissing('produk', ['id_produk' => $idProduk]);
+    }
+
+    public function test_admin_can_toggle_product_availability_and_customers_cannot_access_toggle(): void
+    {
+        DB::table('produk')->insert([
+            'id_produk' => 50,
+            'nama_produk' => 'Produk Toggle',
+            'harga_produk' => 25000,
+            'stok_produk' => 5,
+            'is_available' => true,
+        ]);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.products.index'))
+            ->assertOk()
+            ->assertSee('Tersedia')
+            ->assertSee(route('admin.products.toggle', 50));
+
+        $this->actingAsAdmin()
+            ->post(route('admin.products.toggle', 50))
+            ->assertRedirect(route('admin.products.index'))
+            ->assertSessionHas('success');
+        $this->assertDatabaseHas('produk', ['id_produk' => 50, 'is_available' => false]);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.products.index'))
+            ->assertOk()
+            ->assertSee('Habis');
+
+        $this->actingAsAdmin()
+            ->post(route('admin.products.toggle', 50))
+            ->assertRedirect(route('admin.products.index'));
+        $this->assertDatabaseHas('produk', ['id_produk' => 50, 'is_available' => true]);
+
+        $this->withSession(['id_pelanggan' => 7, 'role' => 'Pelanggan'])
+            ->post(route('admin.products.toggle', 50))
+            ->assertRedirect(route('login'));
+        $this->assertDatabaseHas('produk', ['id_produk' => 50, 'is_available' => true]);
+
+        $this->actingAsAdmin()
+            ->post(route('admin.products.toggle', 999))
+            ->assertNotFound();
     }
 
     public function test_admin_can_verify_payment_assign_courier_and_complete_delivery(): void
@@ -616,6 +660,150 @@ class AdminTest extends TestCase
         ]);
     }
 
+    public function test_admin_report_filters_payment_method_and_order_status_and_sums_matching_orders(): void
+    {
+        DB::table('pelanggan')->insert([
+            ['id_pelanggan' => 1, 'nama_pelanggan' => 'Pelanggan QRIS Diproses'],
+            ['id_pelanggan' => 2, 'nama_pelanggan' => 'Pelanggan Transfer Selesai'],
+            ['id_pelanggan' => 3, 'nama_pelanggan' => 'Pelanggan QRIS Selesai'],
+            ['id_pelanggan' => 4, 'nama_pelanggan' => 'Pelanggan Menunggu'],
+        ]);
+        DB::table('pesanan')->insert([
+            ['id_pesanan' => 1, 'id_pelanggan' => 1, 'tanggal_pemesanan' => '2026-05-10 10:00:00', 'total_harga' => 25000, 'status_pesanan' => 'diproses'],
+            ['id_pesanan' => 2, 'id_pelanggan' => 2, 'tanggal_pemesanan' => '2026-05-11 10:00:00', 'total_harga' => 45000, 'status_pesanan' => 'selesai'],
+            ['id_pesanan' => 3, 'id_pelanggan' => 3, 'tanggal_pemesanan' => '2026-05-12 10:00:00', 'total_harga' => 30000, 'status_pesanan' => 'selesai'],
+            ['id_pesanan' => 4, 'id_pelanggan' => 4, 'tanggal_pemesanan' => '2026-05-13 10:00:00', 'total_harga' => 20000, 'status_pesanan' => 'menunggu'],
+        ]);
+        DB::table('pembayaran')->insert([
+            ['id_pesanan' => 1, 'metode_pembayaran' => 'QRIS', 'jumlah_bayar' => 25000, 'status_pembayaran' => 'diverifikasi'],
+            ['id_pesanan' => 2, 'metode_pembayaran' => 'BCA', 'jumlah_bayar' => 45000, 'status_pembayaran' => 'diverifikasi'],
+            ['id_pesanan' => 3, 'metode_pembayaran' => 'QRIS', 'jumlah_bayar' => 30000, 'status_pembayaran' => 'menunggu'],
+            ['id_pesanan' => 4, 'metode_pembayaran' => 'BCA', 'jumlah_bayar' => 20000, 'status_pembayaran' => 'menunggu'],
+        ]);
+
+        $dates = ['dari' => '2026-05-01', 'sampai' => '2026-05-31'];
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + [
+                'metode_pembayaran' => 'QRIS',
+                'status_pesanan' => 'selesai',
+            ]))
+            ->assertOk()
+            ->assertSee('Pelanggan QRIS Selesai')
+            ->assertDontSee('Pelanggan QRIS Diproses')
+            ->assertDontSee('Pelanggan Transfer Selesai')
+            ->assertSee('Total Nominal Transaksi Terfilter')
+            ->assertSee('Rp 30.000')
+            ->assertSee('value="QRIS" selected', false)
+            ->assertSee('value="selesai" selected', false)
+            ->assertSee('Grafik Penjualan Bulanan');
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + ['metode_pembayaran' => 'QRIS']))
+            ->assertOk()
+            ->assertSee('Pelanggan QRIS Diproses')
+            ->assertSee('Pelanggan QRIS Selesai')
+            ->assertDontSee('Pelanggan Transfer Selesai')
+            ->assertSee('Rp 55.000');
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + ['status_pesanan' => 'selesai']))
+            ->assertOk()
+            ->assertSee('Pelanggan Transfer Selesai')
+            ->assertSee('Pelanggan QRIS Selesai')
+            ->assertDontSee('Pelanggan QRIS Diproses')
+            ->assertSee('Rp 75.000');
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + [
+                'metode_pembayaran' => 'QRIS',
+                'status_pesanan' => 'menunggu',
+            ]))
+            ->assertOk()
+            ->assertSee('Tidak ada penjualan pada rentang tanggal ini.')
+            ->assertSee('Rp 0');
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + ['nominal_min' => 30000]))
+            ->assertOk()
+            ->assertSee('Pelanggan Transfer Selesai')
+            ->assertSee('Pelanggan QRIS Selesai')
+            ->assertDontSee('Pelanggan QRIS Diproses')
+            ->assertDontSee('Pelanggan Menunggu')
+            ->assertSee('Rp 75.000')
+            ->assertSee('name="nominal_min" min="0" step="0.01" value="30000"', false);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + ['nominal_max' => 25000]))
+            ->assertOk()
+            ->assertSee('Pelanggan QRIS Diproses')
+            ->assertSee('Pelanggan Menunggu')
+            ->assertDontSee('Pelanggan Transfer Selesai')
+            ->assertDontSee('Pelanggan QRIS Selesai')
+            ->assertSee('Rp 45.000');
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + [
+                'metode_pembayaran' => 'QRIS',
+                'status_pesanan' => 'selesai',
+                'nominal_min' => 25000,
+                'nominal_max' => 35000,
+            ]))
+            ->assertOk()
+            ->assertSee('Pelanggan QRIS Selesai')
+            ->assertDontSee('Pelanggan QRIS Diproses')
+            ->assertDontSee('Pelanggan Transfer Selesai')
+            ->assertSee('Rp 30.000')
+            ->assertSee('value="35000"', false);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', $dates + [
+                'nominal_min' => 35000,
+                'nominal_max' => 25000,
+            ]))
+            ->assertSessionHasErrors('nominal_max');
+    }
+
+    public function test_admin_report_pagination_keeps_report_filters(): void
+    {
+        $orders = [];
+        $payments = [];
+
+        foreach (range(1, 16) as $id) {
+            $orders[] = [
+                'id_pesanan' => $id,
+                'id_pelanggan' => $id,
+                'tanggal_pemesanan' => '2026-05-10 10:00:00',
+                'total_harga' => 1000,
+                'status_pesanan' => 'selesai',
+            ];
+            $payments[] = [
+                'id_pesanan' => $id,
+                'metode_pembayaran' => 'QRIS',
+                'jumlah_bayar' => 1000,
+                'status_pembayaran' => 'diverifikasi',
+            ];
+        }
+
+        DB::table('pesanan')->insert($orders);
+        DB::table('pembayaran')->insert($payments);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', [
+                'dari' => '2026-05-01',
+                'sampai' => '2026-05-31',
+                'metode_pembayaran' => 'QRIS',
+                'status_pesanan' => 'selesai',
+                'nominal_min' => 0,
+            ]))
+            ->assertOk()
+            ->assertSee('metode_pembayaran=QRIS')
+            ->assertSee('status_pesanan=selesai')
+            ->assertSee('nominal_min=0')
+            ->assertSee('Rp 16.000')
+            ->assertSee('page=2');
+    }
+
     public function test_admin_report_shows_filtered_database_rows_and_exports_a_real_excel_file(): void
     {
         DB::table('pelanggan')->insert([
@@ -667,7 +855,12 @@ class AdminTest extends TestCase
             ->assertDontSee('Pelanggan April');
 
         $response = $this->actingAsAdmin()
-            ->get(route('admin.reports.export', ['dari' => '2026-05-01', 'sampai' => '2026-05-31']))
+            ->get(route('admin.reports.export', [
+                'dari' => '2026-05-01',
+                'sampai' => '2026-05-31',
+                'metode_pembayaran' => 'BCA',
+                'status_pesanan' => 'diproses',
+            ]))
             ->assertOk()
             ->assertDownload('laporan-penjualan-2026-05-01-2026-05-31.xlsx')
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

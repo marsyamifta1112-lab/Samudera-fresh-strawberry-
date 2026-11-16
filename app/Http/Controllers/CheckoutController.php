@@ -62,6 +62,11 @@ class CheckoutController extends Controller
                     ->with('error', 'Ada produk yang sudah tidak tersedia. Periksa kembali keranjang.');
             }
 
+            if (! (bool) ($produk->is_available ?? true) || (int) $produk->stok_produk < 1) {
+                return redirect()->route('keranjang.index')
+                    ->with('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
+            }
+
             $keranjang[$idProduk]['nama_produk'] = $produk->nama_produk;
             $keranjang[$idProduk]['harga_produk'] = $produk->harga_produk;
             $keranjang[$idProduk]['foto_produk'] = $produk->foto_produk;
@@ -147,6 +152,12 @@ class CheckoutController extends Controller
                     throw ValidationException::withMessages([
                         'keranjang' =>
                             'Produk tidak ditemukan. Silakan periksa keranjang.',
+                    ]);
+                }
+
+                if (! (bool) ($produk->is_available ?? true) || (int) $produk->stok_produk < 1) {
+                    throw ValidationException::withMessages([
+                        'keranjang' => 'Maaf, produk sedang habis dan tidak dapat dipesan.',
                     ]);
                 }
 

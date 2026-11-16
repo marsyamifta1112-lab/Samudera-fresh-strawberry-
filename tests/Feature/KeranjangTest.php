@@ -23,6 +23,7 @@ class KeranjangTest extends TestCase
             $table->decimal('harga_produk', 12, 2);
             $table->string('foto_produk')->nullable();
             $table->unsignedInteger('stok_produk');
+            $table->boolean('is_available')->default(true);
         });
 
         Schema::create('pesanan', function (Blueprint $table) {
@@ -268,6 +269,79 @@ class KeranjangTest extends TestCase
             'id_pelanggan' => 7,
             'role' => 'Pelanggan',
         ])->get(route('pembayaran.upload.form', 1))->assertOk();
+    }
+
+    public function test_unavailable_or_out_of_stock_products_cannot_be_added_or_checked_out(): void
+    {
+        DB::table('produk')->where('id_produk', $this->idProduk)->update(['is_available' => false]);
+
+        $this->get(route('produk.index'))
+        ->assertOk()
+        ->assertSee('Stroberi Segar')
+        ->assertSee('Habis')
+        ->assertSee('disabled', false);
+        $this->get(route('produk.show', $this->idProduk))
+        ->assertOk()
+        ->assertSee('Habis')
+        ->assertSee('Produk Habis')
+        ->assertSee('disabled', false);
+
+        $customerSession = ['id_pelanggan' => 7, 'role' => 'Pelanggan'];
+        $this->withSession($customerSession)
+        ->post(route('keranjang.tambah', $this->idProduk), ['jumlah' => 1])
+        ->assertSessionHas('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
+
+        $cartSession = $customerSession + [
+        'keranjang' => [
+            $this->idProduk => [
+                'id_produk' => $this->idProduk,
+                'jumlah' => 1,
+            ],
+        ],
+        ];
+
+        $this->withSession($cartSession)
+        ->get(route('checkout.index'))
+        ->assertRedirect(route('keranjang.index'))
+        ->assertSessionHas('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
+
+        $this->withSession($cartSession)
+        ->post(route('checkout.store'), [
+            'nama_penerima' => 'Penerima Uji',
+            'alamat_pengiriman' => 'Jl. Contoh, Kecamatan Soreang, Kabupaten Bandung',
+            'no_hp' => '08123456789',
+            'metode_pembayaran' => 'Transfer',
+        ])
+        ->assertSessionHasErrors('keranjang');
+
+        $this->assertDatabaseCount('pesanan', 0);
+        $this->assertDatabaseCount('detail_pesanan', 0);
+        $this->assertDatabaseHas('produk', [
+        'id_produk' => $this->idProduk,
+        'stok_produk' => 5,
+        ]);
+
+        DB::table('produk')->where('id_produk', $this->idProduk)->update([
+        'is_available' => true,
+        'stok_produk' => 0,
+        ]);
+        $this->withSession($customerSession)
+        ->post(route('keranjang.tambah', $this->idProduk), ['jumlah' => 1])
+        ->assertSessionHas('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
+        $this->withSession($cartSession)
+        ->post(route('checkout.store'), [
+            'nama_penerima' => 'Penerima Uji',
+            'alamat_pengiriman' => 'Jl. Contoh, Kecamatan Soreang, Kabupaten Bandung',
+            'no_hp' => '08123456789',
+            'metode_pembayaran' => 'Transfer',
+        ])
+        ->assertSessionHasErrors('keranjang');
+
+        $this->assertDatabaseCount('pesanan', 0);
+        $this->assertDatabaseHas('produk', [
+        'id_produk' => $this->idProduk,
+        'stok_produk' => 0,
+        ]);
     }
 
     public function test_customer_can_upload_payment_proof_for_their_order(): void

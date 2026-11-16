@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
@@ -60,6 +61,29 @@ class AdminController extends Controller
         $produk = $query->paginate(10)->withQueryString();
 
         return view('admin.products.index', compact('produk'));
+    }
+
+    public function toggle($id)
+    {
+        $isAvailable = DB::transaction(function () use ($id): bool {
+            $produk = DB::table('produk')
+                ->where('id_produk', $id)
+                ->lockForUpdate()
+                ->first();
+            abort_if(! $produk, 404);
+
+            $isAvailable = ! (bool) $produk->is_available;
+            DB::table('produk')
+                ->where('id_produk', $id)
+                ->update(['is_available' => $isAvailable]);
+
+            return $isAvailable;
+        });
+
+        return redirect()->route('admin.products.index')
+            ->with('success', $isAvailable
+                ? 'Produk berhasil ditandai tersedia.'
+                : 'Produk berhasil ditandai habis.');
     }
 
     public function bestSellers()
@@ -524,17 +548,16 @@ class AdminController extends Controller
 
     public function reports(Request $request)
     {
-        $filters = $request->validate([
-            'dari' => 'nullable|date',
-            'sampai' => 'nullable|date|after_or_equal:dari',
-        ]);
+        $filterOptions = $this->reportFilterOptions();
+        $filters = $this->validateReportFilters($request, $filterOptions);
         $from = $filters['dari'] ?? now()->startOfMonth()->toDateString();
         $to = $filters['sampai'] ?? now()->toDateString();
-        $query = $this->reportQuery($from, $to);
+        $query = $this->reportQuery($from, $to, $filters);
 
         $ringkasan = [
             'jumlah_pesanan' => (clone $query)->count('p.id_pesanan'),
             'total_penjualan' => (clone $query)->where('pb.status_pembayaran', 'diverifikasi')->sum('pb.jumlah_bayar'),
+            'total_nominal' => (clone $query)->sum('p.total_harga'),
             'belum_dibayar' => (clone $query)->where(function ($builder) {
                 $builder->whereNull('pb.status_pembayaran')
                     ->orWhere('pb.status_pembayaran', '!=', 'diverifikasi');
@@ -573,18 +596,23 @@ class AdminController extends Controller
             ];
         });
 
-        return view('admin.reports', compact('ringkasan', 'laporan', 'from', 'to', 'grafikBulanan'));
+        return view('admin.reports', compact(
+            'ringkasan',
+            'laporan',
+            'from',
+            'to',
+            'grafikBulanan',
+            'filterOptions',
+            'filters'
+        ));
     }
 
     public function exportReports(Request $request)
     {
-        $filters = $request->validate([
-            'dari' => 'nullable|date',
-            'sampai' => 'nullable|date|after_or_equal:dari',
-        ]);
+        $filters = $this->validateReportFilters($request, $this->reportFilterOptions());
         $from = $filters['dari'] ?? now()->startOfMonth()->toDateString();
         $to = $filters['sampai'] ?? now()->toDateString();
-        $rows = $this->reportQuery($from, $to)
+        $rows = $this->reportQuery($from, $to, $filters)
             ->leftJoin('pelanggan as pl', 'pl.id_pelanggan', '=', 'p.id_pelanggan')
             ->select(
                 'p.id_pesanan',
@@ -855,12 +883,69 @@ class AdminController extends Controller
             );
     }
 
-    private function reportQuery(string $from, string $to)
+    private function reportQuery(string $from, string $to, array $filters = [])
     {
         return DB::table('pesanan as p')
             ->leftJoin('pembayaran as pb', 'pb.id_pesanan', '=', 'p.id_pesanan')
             ->whereDate('p.tanggal_pemesanan', '>=', $from)
-            ->whereDate('p.tanggal_pemesanan', '<=', $to);
+            ->whereDate('p.tanggal_pemesanan', '<=', $to)
+            ->when(
+                $filters['metode_pembayaran'] ?? null,
+                fn ($query, $method) => $query->where('pb.metode_pembayaran', $method)
+            )
+            ->when(
+                $filters['status_pesanan'] ?? null,
+                fn ($query, $status) => $query->where('p.status_pesanan', $status)
+            )
+            ->when(
+                isset($filters['nominal_min']),
+                fn ($query) => $query->where('p.total_harga', '>=', $filters['nominal_min'])
+            )
+            ->when(
+                isset($filters['nominal_max']),
+                fn ($query) => $query->where('p.total_harga', '<=', $filters['nominal_max'])
+            );
+    }
+
+    private function reportFilterOptions(): array
+    {
+        return [
+            'metode_pembayaran' => DB::table('pembayaran')
+                ->whereNotNull('metode_pembayaran')
+                ->distinct()
+                ->orderBy('metode_pembayaran')
+                ->pluck('metode_pembayaran')
+                ->all(),
+            'status_pesanan' => DB::table('pesanan')
+                ->whereNotNull('status_pesanan')
+                ->distinct()
+                ->orderBy('status_pesanan')
+                ->pluck('status_pesanan')
+                ->all(),
+        ];
+    }
+
+    private function validateReportFilters(Request $request, array $filterOptions): array
+    {
+        $filters = $request->validate([
+            'dari' => 'nullable|date',
+            'sampai' => 'nullable|date|after_or_equal:dari',
+            'metode_pembayaran' => ['nullable', Rule::in($filterOptions['metode_pembayaran'])],
+            'status_pesanan' => ['nullable', Rule::in($filterOptions['status_pesanan'])],
+            'nominal_min' => ['nullable', 'numeric', 'min:0'],
+            'nominal_max' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        if (
+            isset($filters['nominal_min'], $filters['nominal_max'])
+            && (float) $filters['nominal_max'] < (float) $filters['nominal_min']
+        ) {
+            throw ValidationException::withMessages([
+                'nominal_max' => 'Nominal maksimum harus lebih besar atau sama dengan nominal minimum.',
+            ]);
+        }
+
+        return $filters;
     }
 
     

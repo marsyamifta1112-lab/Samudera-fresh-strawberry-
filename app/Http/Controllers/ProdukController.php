@@ -39,8 +39,7 @@ class ProdukController extends Controller
 
             $query->where(function ($query) use ($kataKategori) {
                 foreach ($kataKategori as $kata) {
-                    $query->orWhere('nama_produk', 'like', '%' . $kata . '%')
-                        ->orWhere('deskripsi', 'like', '%' . $kata . '%');
+                    $query->orWhere('nama_produk', 'like', '%' . $kata . '%');
                 }
             });
         }
@@ -72,8 +71,9 @@ class ProdukController extends Controller
         $keranjang = session('keranjang', []);
         $jumlahDiKeranjang = $keranjang[$produk->id_produk]['jumlah'] ?? 0;
         $stokTersedia = max(0, (int) $produk->stok_produk - (int) $jumlahDiKeranjang);
+        $dapatDipesan = (bool) ($produk->is_available ?? true) && (int) $produk->stok_produk > 0;
 
-        return view('produk-detail', compact('produk', 'stokTersedia'));
+        return view('produk-detail', compact('produk', 'stokTersedia', 'dapatDipesan'));
     }
 
     // Menambahkan produk ke keranjang
@@ -92,6 +92,10 @@ class ProdukController extends Controller
         if (!$produk) {
             return redirect()->route('produk.index')
                 ->with('error', 'Produk tidak ditemukan.');
+        }
+
+        if (! (bool) ($produk->is_available ?? true) || (int) $produk->stok_produk < 1) {
+            return back()->with('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
         }
 
         $keranjang = session('keranjang', []);
@@ -148,13 +152,19 @@ class ProdukController extends Controller
             $item['nama_produk'] = $dataProduk->nama_produk;
             $item['harga_produk'] = $dataProduk->harga_produk;
             $item['foto_produk'] = $dataProduk->foto_produk;
+            $item['is_available'] = (bool) ($dataProduk->is_available ?? true)
+                && (int) $dataProduk->stok_produk > 0;
             $total += $dataProduk->harga_produk * $item['jumlah'];
         }
         unset($item);
 
+        $adaProdukHabis = collect($keranjang)->contains(
+            fn (array $item): bool => ! ($item['is_available'] ?? true)
+        );
+
         session(['keranjang' => $keranjang]);
 
-        return view('keranjang', compact('keranjang', 'total'));
+        return view('keranjang', compact('keranjang', 'total', 'adaProdukHabis'));
     }
 
     // Mengubah jumlah produk di keranjang
@@ -181,6 +191,10 @@ class ProdukController extends Controller
 
             return redirect()->route('keranjang.index')
                 ->with('error', 'Produk tidak ditemukan.');
+        }
+
+        if (! (bool) ($produk->is_available ?? true) || (int) $produk->stok_produk < 1) {
+            return back()->with('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
         }
 
         if ($request->jumlah > $produk->stok_produk) {
@@ -223,6 +237,10 @@ class ProdukController extends Controller
 
         if (!$produk) {
             return back()->with('error', 'Produk tidak ditemukan.');
+        }
+
+        if (! (bool) ($produk->is_available ?? true) || (int) $produk->stok_produk < 1) {
+            return back()->with('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
         }
 
         if ($request->jumlah > $produk->stok_produk) {

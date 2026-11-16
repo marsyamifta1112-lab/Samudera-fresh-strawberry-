@@ -217,6 +217,22 @@
             background: #c92547;
         }
 
+        .checkout-button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        .availability-badge {
+            display: inline-block;
+            margin-bottom: 12px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .availability-badge.sold { background: #fde3e8; color: #b42342; }
+
         .empty-cart {
             padding: 50px 20px;
             text-align: center;
@@ -318,6 +334,9 @@
                                 <h2 class="product-name">
                                     {{ $item['nama_produk'] }}
                                 </h2>
+                                @if (! ($item['is_available'] ?? true))
+                                    <span class="availability-badge sold">Habis</span>
+                                @endif
 
                                 <p class="product-price">
                                     Rp{{ number_format($item['harga_produk'], 0, ',', '.') }}
@@ -346,6 +365,7 @@
                                             type="submit"
                                             name="jumlah"
                                             value="{{ $item['jumlah'] + 1 }}"
+                                            {{ ! ($item['is_available'] ?? true) ? 'disabled' : '' }}
                                             aria-label="Tambah jumlah"
                                         >+</button>
                                     </form>
@@ -381,9 +401,11 @@
                         <span>Rp{{ number_format($total, 0, ',', '.') }}</span>
                     </div>
 
-                    <a href="{{ url('/checkout') }}" class="checkout-button">
-                        Checkout
-                    </a>
+                    @if ($adaProdukHabis)
+                        <button type="button" class="checkout-button" disabled>Hapus produk habis untuk checkout</button>
+                    @else
+                        <a href="{{ url('/checkout') }}" class="checkout-button">Checkout</a>
+                    @endif
                 </aside>
             </div>
         @else
