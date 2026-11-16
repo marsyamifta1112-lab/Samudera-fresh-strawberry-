@@ -106,10 +106,17 @@
         .back { color: #245b3b; text-decoration: none; }
         .error { color: #b51f35; font-size: 14px; margin-top: 5px; }
         .alert { padding: 12px; border-radius: 8px; margin-bottom: 15px; background: #ffe5e8; }
+        .shipping-schedule { display:flex; justify-content:space-between; align-items:center; gap:20px; margin:0 0 22px; padding:17px 20px; border:1px solid #f4d8de; border-radius:14px; background:#fff8f8; }
+        .shipping-schedule > div { display:grid; gap:5px; }
+        .shipping-label { color:#777; font-size:11px; }
+        .shipping-schedule strong { color:#245b3b; font-size:15px; }
+        .shipping-schedule p,.shipping-schedule small { margin:0; color:#666; font-size:11px; line-height:1.5; }
+        .shipping-schedule small { max-width:260px; }
         @media (max-width: 700px) {
             header { align-items: flex-start; flex-direction: column; }
             .layout { grid-template-columns: 1fr; }
             .panel { padding: 21px; }
+            .shipping-schedule { align-items:flex-start; flex-direction:column; gap:8px; }
         }
     </style>
 </head>
@@ -120,6 +127,17 @@
     <a class="back" href="{{ route('keranjang.index') }}">← Kembali ke Keranjang</a>
     <h1>Checkout</h1>
     <p>Lengkapi informasi penerima untuk melanjutkan pesanan.</p>
+
+    @include('partials.operational-hours')
+
+    <section class="shipping-schedule" aria-label="Jadwal pengiriman">
+        <div>
+            <span class="shipping-label">Jadwal barang dikirim dari toko</span>
+            <strong>{{ $operationalSchedule['label_pengiriman'] }}</strong>
+            <p>{{ $operationalSchedule['pesan_pengiriman'] }}</p>
+        </div>
+        <small>Ini rencana barang berangkat dari toko setelah pembayaran dikonfirmasi, bukan estimasi tanggal tiba. Lama pengiriman mengikuti kurir dan wilayah tujuan.</small>
+    </section>
 
     @if (session('error'))
         <div class="alert">{{ session('error') }}</div>

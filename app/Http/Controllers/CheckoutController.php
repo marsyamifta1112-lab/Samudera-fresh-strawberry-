@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\OperationalSchedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Support\ShippingZoneResolver;
@@ -77,13 +79,15 @@ class CheckoutController extends Controller
         $tarifWilayahOngkir = $wilayahOngkir
             ->pluck('tarif', 'nama_wilayah')
             ->map(fn ($tarif) => (int) $tarif);
+        $operationalSchedule = OperationalSchedule::current();
 
         return view('checkout', compact(
             'keranjang',
             'subtotalProduk',
             'wilayahOngkir',
             'aturanWilayahOngkir',
-            'tarifWilayahOngkir'
+            'tarifWilayahOngkir',
+            'operationalSchedule'
         ));
     }
 
@@ -113,7 +117,7 @@ class CheckoutController extends Controller
 
         $idPelanggan = session('id_pelanggan');
 
-        $idPesanan = DB::transaction(function () use (
+        $order = DB::transaction(function () use (
             $keranjang,
             $idPelanggan,
             $validated
@@ -203,10 +207,17 @@ class CheckoutController extends Controller
                 $subtotalProduk
             );
 
+            $orderedAtUtc = Carbon::now('UTC');
+            $shippingSchedule = OperationalSchedule::calculate(
+                OperationalSchedule::settings(),
+                $orderedAtUtc->copy()->setTimezone(OperationalSchedule::TIMEZONE)
+            );
+
             // Simpan data pesanan
             $idPesanan = DB::table('pesanan')->insertGetId([
                 'id_pelanggan' => $idPelanggan,
-                'tanggal_pemesanan' => now(),
+                'tanggal_pemesanan' => $orderedAtUtc->toDateTimeString(),
+                'jadwal_pengiriman' => $shippingSchedule['tanggal_pengiriman'],
                 'total_harga' => $subtotalProduk + $ongkir,
                 'ongkir' => $ongkir,
                 'wilayah_ongkir' => $wilayahOngkir->nama_wilayah,
@@ -232,16 +243,19 @@ class CheckoutController extends Controller
                 'status_pembayaran' => 'menunggu',
             ]);
 
-            return $idPesanan;
+            return [
+                'id_pesanan' => $idPesanan,
+                'jadwal' => $shippingSchedule,
+            ];
         });
 
         // Kosongkan keranjang setelah transaksi berhasil
         session()->forget('keranjang');
 
-        return redirect()->route('pembayaran.show', $idPesanan)
+        return redirect()->route('pembayaran.show', $order['id_pesanan'])
             ->with(
                 'success',
-                'Pesanan berhasil dibuat. Ongkir telah dihitung berdasarkan alamat dan subtotal produk, silakan lanjutkan pembayaran.'
+                'Pesanan berhasil dibuat. Jadwal barang dikirim dari toko: '.$order['jadwal']['label_pengiriman'].'. Ini bukan estimasi tanggal barang tiba; silakan lanjutkan pembayaran.'
             );
     }
 }

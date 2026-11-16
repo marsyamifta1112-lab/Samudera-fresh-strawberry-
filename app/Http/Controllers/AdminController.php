@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Support\ShippingZoneResolver;
+use App\Support\OperationalSchedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
@@ -63,7 +65,7 @@ class AdminController extends Controller
         return view('admin.products.index', compact('produk'));
     }
 
-    public function toggle($id)
+    public function toggle(int $id)
     {
         $isAvailable = DB::transaction(function () use ($id): bool {
             $produk = DB::table('produk')
@@ -131,7 +133,7 @@ class AdminController extends Controller
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil ditambahkan.');
     }
 
-    public function editProduct($id)
+    public function editProduct(int $id)
     {
         $produk = DB::table('produk')->where('id_produk', $id)->first();
         abort_if(! $produk, 404);
@@ -139,7 +141,7 @@ class AdminController extends Controller
         return view('admin.products.form', compact('produk'));
     }
 
-    public function updateProduct(Request $request, $id)
+    public function updateProduct(Request $request, int $id)
     {
         $produk = DB::table('produk')->where('id_produk', $id)->first();
         abort_if(! $produk, 404);
@@ -167,7 +169,7 @@ class AdminController extends Controller
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
-    public function deleteProduct($id)
+    public function deleteProduct(int $id)
     {
         $produk = DB::table('produk')->where('id_produk', $id)->first();
         abort_if(! $produk, 404);
@@ -189,7 +191,7 @@ class AdminController extends Controller
         return view('admin.inventory', compact('produk'));
     }
 
-    public function updateInventory(Request $request, $id)
+    public function updateInventory(Request $request, int $id)
     {
         $data = $request->validate([
             'harga_produk' => 'required|numeric|min:0|max:9999999999.99',
@@ -265,7 +267,52 @@ class AdminController extends Controller
         return back()->with('success', 'Tarif ongkir wilayah berhasil diperbarui.');
     }
 
-    public function orderDetail($id)
+    public function operationalSettings()
+    {
+        $settings = OperationalSchedule::settings();
+        $dayLabels = OperationalSchedule::DAY_NAMES;
+
+        return view('admin.operational-settings', compact('settings', 'dayLabels'));
+    }
+
+    public function updateOperationalSettings(Request $request)
+    {
+        $data = $request->validate([
+            'jam_buka' => ['required', 'date_format:H:i'],
+            'jam_tutup' => ['required', 'date_format:H:i', 'after:jam_buka'],
+            'hari_operasional' => ['required', 'array', 'min:1'],
+            'hari_operasional.*' => ['required', 'integer', 'between:1,7', 'distinct'],
+            'tanggal_libur' => ['nullable', 'array', 'max:100'],
+            'tanggal_libur.*' => ['nullable', 'date_format:Y-m-d', 'distinct'],
+        ], [
+            'jam_tutup.after' => 'Jam tutup harus setelah jam buka pada hari yang sama.',
+            'hari_operasional.min' => 'Pilih setidaknya satu hari operasional.',
+            'tanggal_libur.*.date_format' => 'Tanggal libur harus menggunakan format tanggal yang valid.',
+        ]);
+
+        $holidays = array_values(array_filter(
+            $data['tanggal_libur'] ?? [],
+            static fn ($date): bool => is_string($date) && $date !== ''
+        ));
+        sort($holidays);
+
+        DB::table('pengaturan_operasional')
+            ->where('id', 1)
+            ->update([
+                'jam_buka' => $data['jam_buka'],
+                'jam_tutup' => $data['jam_tutup'],
+                'hari_operasional' => json_encode(
+                    array_values(array_unique(array_map('intval', $data['hari_operasional']))),
+                    JSON_THROW_ON_ERROR
+                ),
+                'tanggal_libur' => json_encode($holidays, JSON_THROW_ON_ERROR),
+                'updated_at' => now(),
+            ]);
+
+        return back()->with('success', 'Jam dan hari operasional berhasil diperbarui.');
+    }
+
+    public function orderDetail(int $id)
     {
         $pesanan = $this->orderQuery()
             ->where('p.id_pesanan', $id)
@@ -281,7 +328,7 @@ class AdminController extends Controller
         return view('admin.order-detail', compact('pesanan', 'detailPesanan'));
     }
 
-    public function paymentReviewPage($id)
+    public function paymentReviewPage(int $id)
     {
         $pesanan = $this->orderQuery()->where('p.id_pesanan', $id)->first();
         abort_if(! $pesanan || ! $pesanan->status_pembayaran, 404);
@@ -289,7 +336,7 @@ class AdminController extends Controller
         return view('admin.payment-review', compact('pesanan'));
     }
 
-    public function updateOrder(Request $request, $id)
+    public function updateOrder(Request $request, int $id)
     {
         $data = $request->validate([
             'status_pesanan' => ['required', Rule::in(['menunggu', 'diproses', 'selesai', 'dibatalkan'])],
@@ -300,7 +347,7 @@ class AdminController extends Controller
         return back()->with('success', 'Status pesanan berhasil diperbarui.');
     }
 
-    public function updateShippingCost(Request $request, $id)
+    public function updateShippingCost(Request $request, int $id)
     {
         $ongkir = trim((string) $request->input('ongkir', ''));
 
@@ -368,7 +415,7 @@ class AdminController extends Controller
         );
     }
 
-    public function reviewPayment(Request $request, $id)
+    public function reviewPayment(Request $request, int $id)
     {
         $data = $request->validate([
             'status_pembayaran' => ['required', Rule::in(['diverifikasi', 'ditolak'])],
@@ -430,7 +477,7 @@ class AdminController extends Controller
         return back()->with('success', 'Status pembayaran berhasil diperbarui.');
     }
 
-    public function paymentProof($id)
+    public function paymentProof(int $id)
     {
         $payment = DB::table('pembayaran')->where('id_pesanan', $id)->first();
         abort_if(
@@ -478,7 +525,7 @@ class AdminController extends Controller
         return view('admin.shipments', compact('pesanan', 'kurir'));
     }
 
-    public function assignCourier(Request $request, $id)
+    public function assignCourier(Request $request, int $id)
     {
         $data = $request->validate([
             'id_petugas' => ['required', Rule::exists('petugas', 'id_petugas')->where('role', 'Kurir')],
@@ -517,7 +564,7 @@ class AdminController extends Controller
         return back()->with('success', 'Kurir berhasil ditugaskan.');
     }
 
-    public function updateShipment(Request $request, $id)
+    public function updateShipment(Request $request, int $id)
     {
         $data = $request->validate([
             'status_pengiriman' => ['required', Rule::in(['menunggu', 'diproses', 'dikirim', 'diterima'])],
@@ -548,63 +595,12 @@ class AdminController extends Controller
 
     public function reports(Request $request)
     {
-        $filterOptions = $this->reportFilterOptions();
-        $filters = $this->validateReportFilters($request, $filterOptions);
-        $from = $filters['dari'] ?? now()->startOfMonth()->toDateString();
-        $to = $filters['sampai'] ?? now()->toDateString();
-        $query = $this->reportQuery($from, $to, $filters);
+        return view('admin.reports', $this->reportViewData($request, true));
+    }
 
-        $ringkasan = [
-            'jumlah_pesanan' => (clone $query)->count('p.id_pesanan'),
-            'total_penjualan' => (clone $query)->where('pb.status_pembayaran', 'diverifikasi')->sum('pb.jumlah_bayar'),
-            'total_nominal' => (clone $query)->sum('p.total_harga'),
-            'belum_dibayar' => (clone $query)->where(function ($builder) {
-                $builder->whereNull('pb.status_pembayaran')
-                    ->orWhere('pb.status_pembayaran', '!=', 'diverifikasi');
-            })->count('p.id_pesanan'),
-        ];
-
-        $laporan = (clone $query)
-            ->leftJoin('pelanggan as pl', 'pl.id_pelanggan', '=', 'p.id_pelanggan')
-            ->select(
-                'p.id_pesanan',
-                'p.tanggal_pemesanan',
-                'pl.nama_pelanggan',
-                'p.total_harga',
-                'p.ongkir',
-                'p.wilayah_ongkir',
-                DB::raw('CASE WHEN p.ongkir IS NULL THEN p.total_harga ELSE p.total_harga - p.ongkir END as subtotal_produk'),
-                'p.status_pesanan',
-                'pb.metode_pembayaran',
-                'pb.status_pembayaran'
-            )
-            ->orderByDesc('p.tanggal_pemesanan')
-            ->paginate(15)
-            ->withQueryString();
-
-        $grafikBulanan = collect(range(4, 0))->map(function (int $monthsAgo) {
-            $date = now()->subMonths($monthsAgo);
-            $total = DB::table('pesanan as p')
-                ->join('pembayaran as pb', 'pb.id_pesanan', '=', 'p.id_pesanan')
-                ->where('pb.status_pembayaran', 'diverifikasi')
-                ->whereBetween('p.tanggal_pemesanan', [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()])
-                ->sum('pb.jumlah_bayar');
-
-            return (object) [
-                'label' => $date->translatedFormat('M'),
-                'total' => (float) $total,
-            ];
-        });
-
-        return view('admin.reports', compact(
-            'ringkasan',
-            'laporan',
-            'from',
-            'to',
-            'grafikBulanan',
-            'filterOptions',
-            'filters'
-        ));
+    public function printReports(Request $request)
+    {
+        return view('admin.reports-print', $this->reportViewData($request, false));
     }
 
     public function exportReports(Request $request)
@@ -750,7 +746,7 @@ class AdminController extends Controller
             ->with('success', 'Petugas baru berhasil ditambahkan.');
     }
 
-    public function approveCourier($id)
+    public function approveCourier(int $id)
     {
         $updated = DB::table('petugas')
             ->where('id_petugas', $id)
@@ -860,27 +856,30 @@ class AdminController extends Controller
         return $petugas;
     }
 
-    private function orderQuery()
+    private function orderQuery(): \Illuminate\Database\Query\Builder
     {
-        return DB::table('pesanan as p')
-            ->join('pelanggan as pl', 'pl.id_pelanggan', '=', 'p.id_pelanggan')
-            ->leftJoin('pembayaran as pb', 'pb.id_pesanan', '=', 'p.id_pesanan')
-            ->select(
-                'p.id_pesanan',
-                'p.nama_penerima',
-                'p.alamat_pengiriman',
-                'p.tanggal_pemesanan',
-                'p.total_harga',
-                'p.ongkir',
-                'p.wilayah_ongkir',
-                DB::raw('CASE WHEN p.ongkir IS NULL THEN p.total_harga ELSE p.total_harga - p.ongkir END as subtotal_produk'),
-                'p.status_pesanan',
-                'pl.nama_pelanggan',
-                'pb.bukti_pembayaran',
-                'pb.metode_pembayaran',
-                'pb.status_pembayaran',
-                'pb.nomor_struk'
-            );
+        $query = DB::table('pesanan as p');
+        $query->join('pelanggan as pl', 'pl.id_pelanggan', '=', 'p.id_pelanggan');
+        $query->leftJoin('pembayaran as pb', 'pb.id_pesanan', '=', 'p.id_pesanan');
+        $query->select([
+            'p.id_pesanan',
+            'p.nama_penerima',
+            'p.alamat_pengiriman',
+            'p.tanggal_pemesanan',
+            'p.jadwal_pengiriman',
+            'p.total_harga',
+            'p.ongkir',
+            'p.wilayah_ongkir',
+            DB::raw('CASE WHEN p.ongkir IS NULL THEN p.total_harga ELSE p.total_harga - p.ongkir END as subtotal_produk'),
+            'p.status_pesanan',
+            'pl.nama_pelanggan',
+            'pb.bukti_pembayaran',
+            'pb.metode_pembayaran',
+            'pb.status_pembayaran',
+            'pb.nomor_struk',
+        ]);
+
+        return $query;
     }
 
     private function reportQuery(string $from, string $to, array $filters = [])
@@ -904,7 +903,206 @@ class AdminController extends Controller
             ->when(
                 isset($filters['nominal_max']),
                 fn ($query) => $query->where('p.total_harga', '<=', $filters['nominal_max'])
+            )
+            ->when($filters['q'] ?? null, function ($query, string $term): void {
+                $query->where(function ($builder) use ($term): void {
+                    $builder->whereExists(function ($customerQuery) use ($term): void {
+                        $customerQuery->selectRaw('1')
+                            ->from('pelanggan as search_pl')
+                            ->whereColumn('search_pl.id_pelanggan', 'p.id_pelanggan')
+                            ->where('search_pl.nama_pelanggan', 'like', '%'.$term.'%');
+                    })->orWhere('pb.nomor_struk', 'like', '%'.$term.'%');
+
+                    if (ctype_digit($term)) {
+                        $builder->orWhere('p.id_pesanan', (int) $term);
+                    }
+                });
+            });
+    }
+
+    private function reportViewData(Request $request, bool $paginate): array
+    {
+        $filterOptions = $this->reportFilterOptions();
+        $filters = $this->validateReportFilters($request, $filterOptions);
+        $from = $filters['dari'] ?? now()->startOfMonth()->toDateString();
+        $to = $filters['sampai'] ?? now()->toDateString();
+        $period = $filters['periode'] ?? $this->defaultReportPeriod($from, $to);
+        $query = $this->reportQuery($from, $to, $filters);
+        $paidQuery = (clone $query)
+            ->where('pb.status_pembayaran', 'diverifikasi')
+            ->where(function ($builder): void {
+                $builder->whereNull('p.status_pesanan')
+                    ->orWhere('p.status_pesanan', '!=', 'dibatalkan');
+            });
+
+        $ringkasan = [
+            'total_transaksi' => (clone $paidQuery)->distinct()->count('p.id_pesanan'),
+            'total_pendapatan' => (float) (clone $paidQuery)->sum('pb.jumlah_bayar'),
+            'jumlah_pesanan' => (clone $query)->distinct()->count('p.id_pesanan'),
+            'produk_terjual' => (int) (clone $paidQuery)
+                ->join('detail_pesanan as sold_details', 'sold_details.id_pesanan', '=', 'p.id_pesanan')
+                ->sum('sold_details.jumlah'),
+        ];
+
+        $produkTerlaris = (clone $paidQuery)
+            ->join('detail_pesanan as dp', 'dp.id_pesanan', '=', 'p.id_pesanan')
+            ->join('produk as pr', 'pr.id_produk', '=', 'dp.id_produk')
+            ->select('pr.id_produk', 'pr.nama_produk')
+            ->selectRaw('SUM(dp.jumlah) as jumlah_terjual')
+            ->groupBy('pr.id_produk', 'pr.nama_produk')
+            ->orderByDesc('jumlah_terjual')
+            ->limit(5)
+            ->get();
+
+        $periodExpression = $this->reportPeriodExpression($period);
+        $periodRows = (clone $query)
+            ->selectRaw($periodExpression.' as bucket')
+            ->selectRaw('COUNT(DISTINCT p.id_pesanan) as jumlah_pesanan')
+            ->selectRaw(
+                "SUM(CASE WHEN pb.status_pembayaran = 'diverifikasi' "
+                ."AND (p.status_pesanan IS NULL OR p.status_pesanan != 'dibatalkan') "
+                .'THEN COALESCE(pb.jumlah_bayar, 0) ELSE 0 END) as total_pendapatan'
+            )
+            ->groupByRaw($periodExpression)
+            ->orderBy('bucket')
+            ->get();
+        $grafikPeriode = $this->fillReportPeriods($from, $to, $period, $periodRows);
+
+        $rowsQuery = (clone $query)
+            ->leftJoin('pelanggan as pl', 'pl.id_pelanggan', '=', 'p.id_pelanggan')
+            ->select(
+                'p.id_pesanan',
+                'p.tanggal_pemesanan',
+                'pl.nama_pelanggan',
+                'p.total_harga',
+                'p.ongkir',
+                'p.wilayah_ongkir',
+                DB::raw('CASE WHEN p.ongkir IS NULL THEN p.total_harga ELSE p.total_harga - p.ongkir END as subtotal_produk'),
+                DB::raw('(SELECT COALESCE(SUM(dp.jumlah), 0) FROM detail_pesanan dp WHERE dp.id_pesanan = p.id_pesanan) as jumlah_produk'),
+                'p.status_pesanan',
+                'pb.metode_pembayaran',
+                'pb.status_pembayaran',
+                'pb.nomor_struk'
             );
+        $sortColumns = [
+            'tanggal' => 'p.tanggal_pemesanan',
+            'pesanan' => 'p.id_pesanan',
+            'total' => 'p.total_harga',
+        ];
+        $rowsQuery->orderBy($sortColumns[$filters['urutkan'] ?? 'tanggal'], $filters['arah'] ?? 'desc')
+            ->orderByDesc('p.id_pesanan');
+        $laporan = $paginate
+            ? $rowsQuery->paginate(15)->withQueryString()
+            : $rowsQuery->get();
+
+        $now = now();
+        $quickRanges = [
+            'harian' => ['label' => 'Hari ini', 'from' => $now->toDateString(), 'to' => $now->toDateString()],
+            'mingguan' => ['label' => 'Minggu ini', 'from' => $now->copy()->startOfWeek(Carbon::MONDAY)->toDateString(), 'to' => $now->toDateString()],
+            'bulanan' => ['label' => 'Bulan ini', 'from' => $now->copy()->startOfMonth()->toDateString(), 'to' => $now->toDateString()],
+            'tahunan' => ['label' => 'Tahun ini', 'from' => $now->copy()->startOfYear()->toDateString(), 'to' => $now->toDateString()],
+        ];
+
+        return compact(
+            'ringkasan',
+            'laporan',
+            'from',
+            'to',
+            'period',
+            'grafikPeriode',
+            'produkTerlaris',
+            'filterOptions',
+            'filters',
+            'quickRanges'
+        );
+    }
+
+    private function defaultReportPeriod(string $from, string $to): string
+    {
+        $days = Carbon::parse($from)->diffInDays(Carbon::parse($to));
+
+        return match (true) {
+            $days <= 31 => 'harian',
+            $days <= 120 => 'mingguan',
+            $days <= 730 => 'bulanan',
+            default => 'tahunan',
+        };
+    }
+
+    private function reportPeriodExpression(string $period): string
+    {
+        $sqlite = DB::connection()->getDriverName() === 'sqlite';
+
+        return match ($period) {
+            'harian' => 'DATE(p.tanggal_pemesanan)',
+            'mingguan' => $sqlite
+                ? "date(p.tanggal_pemesanan, '-' || ((CAST(strftime('%w', p.tanggal_pemesanan) AS INTEGER) + 6) % 7) || ' days')"
+                : 'DATE_SUB(DATE(p.tanggal_pemesanan), INTERVAL WEEKDAY(p.tanggal_pemesanan) DAY)',
+            'bulanan' => $sqlite
+                ? "strftime('%Y-%m', p.tanggal_pemesanan)"
+                : "DATE_FORMAT(p.tanggal_pemesanan, '%Y-%m')",
+            'tahunan' => $sqlite
+                ? "strftime('%Y', p.tanggal_pemesanan)"
+                : 'YEAR(p.tanggal_pemesanan)',
+        };
+    }
+
+    private function fillReportPeriods(
+        string $from,
+        string $to,
+        string $period,
+        \Illuminate\Support\Collection $periodRows
+    )
+    {
+        $totals = $periodRows->keyBy('bucket');
+        $current = Carbon::parse($from);
+        $end = Carbon::parse($to);
+
+        switch ($period) {
+            case 'mingguan':
+                $current->startOfWeek(Carbon::MONDAY);
+                break;
+            case 'bulanan':
+                $current->startOfMonth();
+                break;
+            case 'tahunan':
+                $current->startOfYear();
+                break;
+            default:
+                $current->startOfDay();
+        }
+
+        $points = collect();
+        while ($current <= $end) {
+            $key = match ($period) {
+                'harian' => $current->format('Y-m-d'),
+                'mingguan' => $current->format('Y-m-d'),
+                'bulanan' => $current->format('Y-m'),
+                'tahunan' => $current->format('Y'),
+            };
+            $row = $totals->get($key);
+            $label = match ($period) {
+                'harian' => $current->format('d/m'),
+                'mingguan' => $current->format('d M'),
+                'bulanan' => $current->translatedFormat('M Y'),
+                'tahunan' => $current->format('Y'),
+            };
+
+            $points->push((object) [
+                'label' => $label,
+                'pendapatan' => (float) ($row->total_pendapatan ?? 0),
+                'pesanan' => (int) ($row->jumlah_pesanan ?? 0),
+            ]);
+
+            match ($period) {
+                'harian' => $current->addDay(),
+                'mingguan' => $current->addWeek(),
+                'bulanan' => $current->addMonth(),
+                'tahunan' => $current->addYear(),
+            };
+        }
+
+        return $points;
     }
 
     private function reportFilterOptions(): array
@@ -934,6 +1132,10 @@ class AdminController extends Controller
             'status_pesanan' => ['nullable', Rule::in($filterOptions['status_pesanan'])],
             'nominal_min' => ['nullable', 'numeric', 'min:0'],
             'nominal_max' => ['nullable', 'numeric', 'min:0'],
+            'periode' => ['nullable', Rule::in(['harian', 'mingguan', 'bulanan', 'tahunan'])],
+            'q' => ['nullable', 'string', 'max:100'],
+            'urutkan' => ['nullable', Rule::in(['tanggal', 'pesanan', 'total'])],
+            'arah' => ['nullable', Rule::in(['asc', 'desc'])],
         ]);
 
         if (

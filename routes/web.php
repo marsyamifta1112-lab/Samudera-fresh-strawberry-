@@ -89,6 +89,8 @@ Route::middleware('role:Admin')->prefix('admin')->name('admin.')->group(function
     Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
     Route::get('/shipping-rates', [AdminController::class, 'shippingRates'])->name('shipping-rates');
     Route::put('/shipping-rates', [AdminController::class, 'updateShippingRates'])->name('shipping-rates.update');
+    Route::get('/operational-settings', [AdminController::class, 'operationalSettings'])->name('operational-settings');
+    Route::put('/operational-settings', [AdminController::class, 'updateOperationalSettings'])->name('operational-settings.update');
     Route::get('/orders/{id}', [AdminController::class, 'orderDetail'])->name('orders.show');
     Route::put('/orders/{id}', [AdminController::class, 'updateOrder'])->name('orders.update');
     Route::put('/orders/{id}/ongkir', [AdminController::class, 'updateShippingCost'])->name('orders.ongkir.update');
@@ -101,6 +103,7 @@ Route::middleware('role:Admin')->prefix('admin')->name('admin.')->group(function
     Route::put('/shipments/{id}', [AdminController::class, 'updateShipment'])->name('shipments.update');
 
     Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+    Route::get('/reports/print', [AdminController::class, 'printReports'])->name('reports.print');
     Route::get('/reports/export', [AdminController::class, 'exportReports'])->name('reports.export');
     Route::get('/staff', [AdminController::class, 'staff'])->name('staff');
     Route::post('/staff', [AdminController::class, 'storeStaff'])->name('staff.store');

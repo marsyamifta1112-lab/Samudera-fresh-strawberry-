@@ -77,6 +77,7 @@
             <a class="{{ request()->routeIs('admin.inventory') ? 'active' : '' }}" href="{{ route('admin.inventory') }}">Harga &amp; Stok</a>
             <a class="{{ request()->routeIs('admin.orders*', 'admin.payments.*') ? 'active' : '' }}" href="{{ route('admin.orders') }}">Pesanan</a>
             <a class="{{ request()->routeIs('admin.shipping-rates*') ? 'active' : '' }}" href="{{ route('admin.shipping-rates') }}">Tarif Ongkir</a>
+            <a class="{{ request()->routeIs('admin.operational-settings*') ? 'active' : '' }}" href="{{ route('admin.operational-settings') }}">Jam Operasional</a>
             <a class="{{ request()->routeIs('admin.returns*') ? 'active' : '' }}" href="{{ route('admin.returns') }}">Return Barang</a>
             <a class="{{ request()->routeIs('admin.shipments') ? 'active' : '' }}" href="{{ route('admin.shipments') }}">Pengiriman</a>
             <a class="{{ request()->routeIs('admin.reports*') ? 'active' : '' }}" href="{{ route('admin.reports') }}">Laporan</a>

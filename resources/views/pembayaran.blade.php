@@ -65,6 +65,8 @@
             font-size: 16px;
             font-weight: bold;
         }
+        .shipping-info { margin:0 0 18px; padding:13px 15px; border:1px solid #dfece2; border-radius:9px; background:#f3f8f3; color:#245b3b; font-size:13px; }
+        .shipping-info p { margin:5px 0 0; color:#666; font-size:12px; line-height:1.5; }
         .amount-row {
             display: flex;
             justify-content: space-between;
@@ -89,6 +91,8 @@
         }
         .button:hover { background: #c92547; }
         .muted { color: #777; font-size: 13px; line-height: 1.6; }
+        .qris-code-card { width: fit-content; max-width: 100%; margin: 20px auto; padding: 12px; border: 1px solid #eee; border-radius: 12px; background: #fff; }
+        .qris-code-image { display: block; width: min(100%, 360px); height: auto; }
         @media (max-width: 650px) {
             header { align-items: flex-start; flex-direction: column; }
             nav { flex-wrap: wrap; gap: 15px; }
@@ -121,10 +125,20 @@
             </div>
         @endif
 
+        @if (!empty($pesanan->jadwal_pengiriman))
+            <div class="shipping-info" role="status">
+                <strong>Jadwal barang dikirim dari toko: {{ \App\Support\OperationalSchedule::formatDate($pesanan->jadwal_pengiriman) }}</strong>
+                <p>Ini rencana keberangkatan setelah pembayaran dikonfirmasi, bukan estimasi tanggal tiba. Lama pengiriman mengikuti kurir dan wilayah tujuan.</p>
+            </div>
+        @endif
+
         <section class="panel">
             @if ($pembayaran->metode_pembayaran === 'QRIS')
                 <h2>Bayar dengan QRIS</h2>
-                <p class="muted">Gunakan kode QRIS resmi Samudera Fresh Strawberry dari Admin. Setelah pembayaran berhasil, unggah bukti pembayaran untuk verifikasi.</p>
+                <p class="muted">Pindai kode QRIS berikut menggunakan aplikasi pembayaran Anda.</p>
+                <div class="qris-code-card">
+                    <img class="qris-code-image" src="{{ asset('images/qris-merchant.png') }}" alt="Kode QRIS Samudera Fresh Strawberry">
+                </div>
             @else
                 <h2>Bank Pengirim</h2>
                 <p class="muted">Pilih bank yang kamu gunakan untuk transfer. Transfer ditujukan ke rekening BCA Samudera Fresh Strawberry di bawah; pelanggan dari bank lain juga bisa transfer ke rekening tersebut.</p>
@@ -187,8 +201,10 @@
                 <p class="muted">Unggah bukti pembayaran setelah ongkir ditetapkan Admin.</p>
             @elseif ($pembayaran->metode_pembayaran === 'Transfer')
                 <p class="muted">Pilih dan simpan bank pengirim sebelum mengunggah bukti pembayaran.</p>
+            @elseif ($pembayaran->metode_pembayaran === 'QRIS')
+                <p class="muted">Bayar sesuai nominal di atas, lalu unggah bukti pembayaran untuk verifikasi.</p>
             @else
-                <p class="muted">{{ $pembayaran->metode_pembayaran === 'QRIS' ? 'Bayar sesuai nominal di atas, lalu unggah bukti pembayaran.' : 'Transfer sesuai nominal di atas, lalu unggah bukti pembayaran.' }}</p>
+                <p class="muted">Transfer sesuai nominal di atas, lalu unggah bukti pembayaran.</p>
             @endif
 
             @if ($pembayaran->status_pembayaran !== 'diverifikasi' && $pesanan->ongkir !== null && $pembayaran->metode_pembayaran !== 'Transfer')

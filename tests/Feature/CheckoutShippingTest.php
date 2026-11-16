@@ -32,6 +32,8 @@ class CheckoutShippingTest extends TestCase
             $table->increments('id_pesanan');
             $table->integer('id_pelanggan');
             $table->dateTime('tanggal_pemesanan')->nullable();
+            $table->date('tanggal_pemrosesan')->nullable();
+            $table->date('jadwal_pengiriman')->nullable();
             $table->decimal('total_harga', 12, 2);
             $table->decimal('ongkir', 12, 2)->nullable();
             $table->string('wilayah_ongkir', 120)->nullable();
@@ -62,6 +64,22 @@ class CheckoutShippingTest extends TestCase
             $table->string('nomor_struk')->nullable();
             $table->dateTime('tanggal_verifikasi')->nullable();
         });
+
+        Schema::create('pengaturan_operasional', function (Blueprint $table) {
+            $table->unsignedTinyInteger('id')->primary();
+            $table->time('jam_buka');
+            $table->time('jam_tutup');
+            $table->json('hari_operasional');
+            $table->json('tanggal_libur');
+            $table->dateTime('updated_at')->nullable();
+        });
+        DB::table('pengaturan_operasional')->insert([
+            'id' => 1,
+            'jam_buka' => '08:00:00',
+            'jam_tutup' => '17:00:00',
+            'hari_operasional' => json_encode([1, 2, 3, 4, 5, 6]),
+            'tanggal_libur' => json_encode([]),
+        ]);
     }
 
     public function test_checkout_detects_shipping_zone_from_address_and_caps_cost_at_product_subtotal(): void
@@ -87,6 +105,9 @@ class CheckoutShippingTest extends TestCase
         ])->get(route('checkout.index'))
             ->assertOk()
             ->assertSee('Wilayah Terdeteksi')
+            ->assertSee('Jam Operasional')
+            ->assertSee('Jadwal barang dikirim dari toko')
+            ->assertSee('bukan estimasi tanggal tiba')
             ->assertSee('Ongkir dihitung otomatis dari kecamatan/kota pada alamat')
             ->assertSee('value="Transfer"', false)
             ->assertSee('value="QRIS"', false);
@@ -110,6 +131,7 @@ class CheckoutShippingTest extends TestCase
             'ongkir' => 12000,
             'total_harga' => 24000,
         ]);
+        $this->assertNotNull(DB::table('pesanan')->where('id_pesanan', 1)->value('jadwal_pengiriman'));
         $this->assertDatabaseHas('pembayaran', [
             'id_pesanan' => 1,
             'jumlah_bayar' => 24000,
@@ -164,7 +186,11 @@ class CheckoutShippingTest extends TestCase
         ])->get(route('pembayaran.show', 1))
             ->assertOk()
             ->assertSee('Bayar dengan QRIS')
-            ->assertDontSee('Bank Pengirim');
+            ->assertSee('qris-merchant.png')
+            ->assertSee('Jadwal barang dikirim dari toko:')
+            ->assertDontSee('Bank Pengirim')
+            ->assertDontSee('QRIS DEMO')
+            ->assertSee('Upload Bukti Pembayaran');
         $this->withSession([
             'id_pelanggan' => 7,
             'role' => 'Pelanggan',

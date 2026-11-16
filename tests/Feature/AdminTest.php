@@ -43,6 +43,8 @@ class AdminTest extends TestCase
             $table->increments('id_pesanan');
             $table->integer('id_pelanggan');
             $table->dateTime('tanggal_pemesanan')->nullable();
+            $table->date('tanggal_pemrosesan')->nullable();
+            $table->date('jadwal_pengiriman')->nullable();
             $table->decimal('total_harga', 12, 2)->nullable();
             $table->decimal('ongkir', 12, 2)->nullable()->default(0);
             $table->string('wilayah_ongkir', 120)->nullable();
@@ -52,6 +54,22 @@ class AdminTest extends TestCase
             $table->string('no_hp', 20)->nullable();
             $table->text('catatan')->nullable();
         });
+
+        Schema::create('pengaturan_operasional', function (Blueprint $table) {
+            $table->unsignedTinyInteger('id')->primary();
+            $table->time('jam_buka');
+            $table->time('jam_tutup');
+            $table->json('hari_operasional');
+            $table->json('tanggal_libur');
+            $table->dateTime('updated_at')->nullable();
+        });
+        DB::table('pengaturan_operasional')->insert([
+            'id' => 1,
+            'jam_buka' => '08:00:00',
+            'jam_tutup' => '17:00:00',
+            'hari_operasional' => json_encode([1, 2, 3, 4, 5, 6]),
+            'tanggal_libur' => json_encode([]),
+        ]);
 
         Schema::create('detail_pesanan', function (Blueprint $table) {
             $table->increments('id_detail');
@@ -428,6 +446,7 @@ class AdminTest extends TestCase
             'id_pesanan' => 1,
             'id_pelanggan' => 1,
             'tanggal_pemesanan' => now(),
+            'jadwal_pengiriman' => '2026-11-17',
             'total_harga' => 25000,
             'status_pesanan' => 'menunggu',
             'nama_penerima' => 'Penerima Uji',
@@ -483,6 +502,7 @@ class AdminTest extends TestCase
             ->get(route('admin.orders.show', 1))
             ->assertOk()
             ->assertSee('Detail Pesanan (Admin)')
+            ->assertSee('Selasa, 17-11-2026')
             ->assertSee('Verifikasi Pembayaran');
         $this->actingAsAdmin()
             ->get(route('admin.payments.show', 1))
@@ -660,6 +680,42 @@ class AdminTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_update_operational_days_hours_and_holidays(): void
+    {
+        $this->actingAsAdmin()
+            ->get(route('admin.operational-settings'))
+            ->assertOk()
+            ->assertSee('Jam Operasional & Hari Libur')
+            ->assertSee('Senin');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.operational-settings.update'), [
+                'jam_buka' => '09:00',
+                'jam_tutup' => '18:00',
+                'hari_operasional' => ['1', '2', '3', '4', '5'],
+                'tanggal_libur' => ['2026-11-16', '2026-11-17'],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $settings = DB::table('pengaturan_operasional')->where('id', 1)->first();
+        $this->assertSame('09:00', substr($settings->jam_buka, 0, 5));
+        $this->assertSame('18:00', substr($settings->jam_tutup, 0, 5));
+        $this->assertSame([1, 2, 3, 4, 5], json_decode($settings->hari_operasional, true));
+        $this->assertSame(['2026-11-16', '2026-11-17'], json_decode($settings->tanggal_libur, true));
+    }
+
+    public function test_admin_operational_settings_reject_invalid_hours_and_empty_operating_days(): void
+    {
+        $this->actingAsAdmin()
+            ->put(route('admin.operational-settings.update'), [
+                'jam_buka' => '17:00',
+                'jam_tutup' => '08:00',
+                'hari_operasional' => [],
+            ])
+            ->assertSessionHasErrors(['jam_tutup', 'hari_operasional']);
+    }
+
     public function test_admin_report_filters_payment_method_and_order_status_and_sums_matching_orders(): void
     {
         DB::table('pelanggan')->insert([
@@ -681,7 +737,7 @@ class AdminTest extends TestCase
             ['id_pesanan' => 4, 'metode_pembayaran' => 'BCA', 'jumlah_bayar' => 20000, 'status_pembayaran' => 'menunggu'],
         ]);
 
-        $dates = ['dari' => '2026-05-01', 'sampai' => '2026-05-31'];
+        $dates = ['dari' => '2026-05-01', 'sampai' => '2026-05-31', 'periode' => 'bulanan'];
 
         $this->actingAsAdmin()
             ->get(route('admin.reports', $dates + [
@@ -692,11 +748,11 @@ class AdminTest extends TestCase
             ->assertSee('Pelanggan QRIS Selesai')
             ->assertDontSee('Pelanggan QRIS Diproses')
             ->assertDontSee('Pelanggan Transfer Selesai')
-            ->assertSee('Total Nominal Transaksi Terfilter')
+            ->assertSee('Total Pendapatan')
             ->assertSee('Rp 30.000')
             ->assertSee('value="QRIS" selected', false)
             ->assertSee('value="selesai" selected', false)
-            ->assertSee('Grafik Penjualan Bulanan');
+            ->assertSee('Pendapatan Bulanan');
 
         $this->actingAsAdmin()
             ->get(route('admin.reports', $dates + ['metode_pembayaran' => 'QRIS']))
@@ -704,7 +760,7 @@ class AdminTest extends TestCase
             ->assertSee('Pelanggan QRIS Diproses')
             ->assertSee('Pelanggan QRIS Selesai')
             ->assertDontSee('Pelanggan Transfer Selesai')
-            ->assertSee('Rp 55.000');
+            ->assertSee('Rp 25.000');
 
         $this->actingAsAdmin()
             ->get(route('admin.reports', $dates + ['status_pesanan' => 'selesai']))
@@ -712,7 +768,7 @@ class AdminTest extends TestCase
             ->assertSee('Pelanggan Transfer Selesai')
             ->assertSee('Pelanggan QRIS Selesai')
             ->assertDontSee('Pelanggan QRIS Diproses')
-            ->assertSee('Rp 75.000');
+            ->assertSee('Rp 45.000');
 
         $this->actingAsAdmin()
             ->get(route('admin.reports', $dates + [
@@ -720,7 +776,7 @@ class AdminTest extends TestCase
                 'status_pesanan' => 'menunggu',
             ]))
             ->assertOk()
-            ->assertSee('Tidak ada penjualan pada rentang tanggal ini.')
+            ->assertSee('Tidak ada pesanan pada rentang tanggal ini.')
             ->assertSee('Rp 0');
 
         $this->actingAsAdmin()
@@ -730,7 +786,7 @@ class AdminTest extends TestCase
             ->assertSee('Pelanggan QRIS Selesai')
             ->assertDontSee('Pelanggan QRIS Diproses')
             ->assertDontSee('Pelanggan Menunggu')
-            ->assertSee('Rp 75.000')
+            ->assertSee('Rp 45.000')
             ->assertSee('name="nominal_min" min="0" step="0.01" value="30000"', false);
 
         $this->actingAsAdmin()
@@ -740,7 +796,7 @@ class AdminTest extends TestCase
             ->assertSee('Pelanggan Menunggu')
             ->assertDontSee('Pelanggan Transfer Selesai')
             ->assertDontSee('Pelanggan QRIS Selesai')
-            ->assertSee('Rp 45.000');
+            ->assertSee('Rp 25.000');
 
         $this->actingAsAdmin()
             ->get(route('admin.reports', $dates + [
@@ -753,6 +809,7 @@ class AdminTest extends TestCase
             ->assertSee('Pelanggan QRIS Selesai')
             ->assertDontSee('Pelanggan QRIS Diproses')
             ->assertDontSee('Pelanggan Transfer Selesai')
+            ->assertSee('Pendapatan Bulanan')
             ->assertSee('Rp 30.000')
             ->assertSee('value="35000"', false);
 
@@ -802,6 +859,97 @@ class AdminTest extends TestCase
             ->assertSee('nominal_min=0')
             ->assertSee('Rp 16.000')
             ->assertSee('page=2');
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports.print', [
+                'dari' => '2026-05-01',
+                'sampai' => '2026-05-31',
+                'metode_pembayaran' => 'QRIS',
+                'status_pesanan' => 'selesai',
+            ]))
+            ->assertOk()
+            ->assertSee('16 pesanan')
+            ->assertSee('#16')
+            ->assertSee('Cetak / Simpan PDF')
+            ->assertSee('window.print()', false);
+    }
+
+    public function test_report_summary_and_charts_use_filtered_paid_orders_and_exclude_cancelled_revenue(): void
+    {
+        DB::table('produk')->insert([
+            ['id_produk' => 1, 'nama_produk' => 'Stroberi Terjual', 'harga_produk' => 12500, 'stok_produk' => 10],
+            ['id_produk' => 2, 'nama_produk' => 'Selai Pesanan Batal', 'harga_produk' => 20000, 'stok_produk' => 10],
+        ]);
+        DB::table('pelanggan')->insert([
+            ['id_pelanggan' => 1, 'nama_pelanggan' => 'Pelanggan Lunas'],
+            ['id_pelanggan' => 2, 'nama_pelanggan' => 'Pelanggan Batal'],
+            ['id_pelanggan' => 3, 'nama_pelanggan' => 'Pelanggan Menunggu'],
+        ]);
+        DB::table('pesanan')->insert([
+            ['id_pesanan' => 1, 'id_pelanggan' => 1, 'tanggal_pemesanan' => '2026-05-10 10:00:00', 'total_harga' => 25000, 'ongkir' => 0, 'status_pesanan' => 'selesai'],
+            ['id_pesanan' => 2, 'id_pelanggan' => 2, 'tanggal_pemesanan' => '2026-05-11 10:00:00', 'total_harga' => 80000, 'ongkir' => 0, 'status_pesanan' => 'dibatalkan'],
+            ['id_pesanan' => 3, 'id_pelanggan' => 3, 'tanggal_pemesanan' => '2026-05-12 10:00:00', 'total_harga' => 12000, 'ongkir' => 0, 'status_pesanan' => 'menunggu'],
+        ]);
+        DB::table('pembayaran')->insert([
+            ['id_pesanan' => 1, 'metode_pembayaran' => 'QRIS', 'jumlah_bayar' => 25000, 'status_pembayaran' => 'diverifikasi'],
+            ['id_pesanan' => 2, 'metode_pembayaran' => 'QRIS', 'jumlah_bayar' => 80000, 'status_pembayaran' => 'diverifikasi'],
+            ['id_pesanan' => 3, 'metode_pembayaran' => 'BCA', 'jumlah_bayar' => 12000, 'status_pembayaran' => 'menunggu'],
+        ]);
+        DB::table('detail_pesanan')->insert([
+            ['id_pesanan' => 1, 'id_produk' => 1, 'jumlah' => 2, 'harga' => 12500, 'subtotal' => 25000],
+            ['id_pesanan' => 2, 'id_produk' => 2, 'jumlah' => 4, 'harga' => 20000, 'subtotal' => 80000],
+            ['id_pesanan' => 3, 'id_produk' => 1, 'jumlah' => 1, 'harga' => 12000, 'subtotal' => 12000],
+        ]);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', [
+                'dari' => '2026-05-01',
+                'sampai' => '2026-05-31',
+                'periode' => 'bulanan',
+            ]))
+            ->assertOk()
+            ->assertSee('class="card-value green">1</div>', false)
+            ->assertSee('class="card-value">Rp 25.000</div>', false)
+            ->assertSee('Pelanggan Batal')
+            ->assertSee('Pelanggan Menunggu')
+            ->assertSee('Stroberi Terjual')
+            ->assertSee('2 pcs')
+            ->assertDontSee('Selai Pesanan Batal')
+            ->assertSee('Pendapatan Bulanan')
+            ->assertSee('Jumlah Pesanan Bulanan');
+
+        foreach (['harian', 'mingguan', 'bulanan', 'tahunan'] as $period) {
+            $this->actingAsAdmin()
+                ->get(route('admin.reports', [
+                    'dari' => '2026-05-01',
+                    'sampai' => '2026-05-31',
+                    'periode' => $period,
+                ]))
+                ->assertOk()
+                ->assertSee('Pendapatan '.ucfirst($period))
+                ->assertSee('Jumlah Pesanan '.ucfirst($period));
+        }
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', [
+                'dari' => '2026-05-01',
+                'sampai' => '2026-05-31',
+                'q' => 'Pelanggan Batal',
+            ]))
+            ->assertOk()
+            ->assertSee('Pelanggan Batal')
+            ->assertDontSee('Pelanggan Lunas')
+            ->assertSee('class="card-value">Rp 0</div>', false);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports', [
+                'dari' => '2026-05-01',
+                'sampai' => '2026-05-31',
+                'urutkan' => 'total',
+                'arah' => 'asc',
+            ]))
+            ->assertOk()
+            ->assertSeeInOrder(['Pelanggan Menunggu', 'Pelanggan Lunas', 'Pelanggan Batal']);
     }
 
     public function test_admin_report_shows_filtered_database_rows_and_exports_a_real_excel_file(): void
@@ -845,13 +993,14 @@ class AdminTest extends TestCase
             ->get(route('admin.reports', ['dari' => '2026-05-01', 'sampai' => '2026-05-31']))
             ->assertOk()
             ->assertSee('Laporan Penjualan')
-            ->assertSee('Grafik Penjualan Bulanan')
-            ->assertSee('Data Penjualan')
+            ->assertSee('class="report-hero"', false)
+            ->assertDontSee('class="page-heading"', false)
+            ->assertSee('Pendapatan Harian')
+            ->assertSee('Detail Transaksi')
             ->assertSee('Pelanggan Mei')
-            ->assertSee('Subtotal Produk')
-            ->assertSee('Ongkir')
-            ->assertSee('Total Pembayaran')
-            ->assertSee('Rp25.000')
+            ->assertSee('Jumlah produk')
+            ->assertSee('Total pembayaran')
+            ->assertSee('Rp 25.000')
             ->assertDontSee('Pelanggan April');
 
         $response = $this->actingAsAdmin()

@@ -25,6 +25,22 @@ class ProdukFilterTest extends TestCase
         $migration = require base_path('database/migrations/2026_10_09_000001_add_berat_gram_to_produk_table.php');
         $migration->up();
 
+        Schema::create('pengaturan_operasional', function (Blueprint $table) {
+            $table->unsignedTinyInteger('id')->primary();
+            $table->time('jam_buka');
+            $table->time('jam_tutup');
+            $table->json('hari_operasional');
+            $table->json('tanggal_libur');
+            $table->dateTime('updated_at')->nullable();
+        });
+        DB::table('pengaturan_operasional')->insert([
+            'id' => 1,
+            'jam_buka' => '08:00:00',
+            'jam_tutup' => '17:00:00',
+            'hari_operasional' => json_encode([1, 2, 3, 4, 5, 6]),
+            'tanggal_libur' => json_encode([]),
+        ]);
+
     }
 
     public function test_category_price_and_weight_filters_can_be_combined(): void
@@ -42,6 +58,8 @@ class ProdukFilterTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('site-header', false)
+            ->assertSee('Jam Operasional')
+            ->assertSee('Tutup: Minggu')
             ->assertSee(route('produk.index'))
             ->assertSee('Keripik Strawberry 100g')
             ->assertDontSee('Strawberry Segar 250g')

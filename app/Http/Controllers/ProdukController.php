@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\OperationalSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Produk;
@@ -61,11 +62,12 @@ class ProdukController extends Controller
         }
 
         $produk = $query->orderBy('id_produk')->get();
+        $operationalSchedule = OperationalSchedule::current();
 
-        return view('produk', compact('produk', 'filters'));
+        return view('produk', compact('produk', 'filters', 'operationalSchedule'));
     }
 
-    public function show($id)
+    public function show(int $id)
     {
         $produk = Produk::whereKey($id)->firstOrFail();
         $keranjang = session('keranjang', []);
@@ -77,7 +79,7 @@ class ProdukController extends Controller
     }
 
     // Menambahkan produk ke keranjang
-    public function tambahKeranjang(Request $request, $id)
+    public function tambahKeranjang(Request $request, int $id)
     {
         $request->validate([
             'jumlah' => 'sometimes|required|integer|min:1|max:1000',
@@ -168,7 +170,7 @@ class ProdukController extends Controller
     }
 
     // Mengubah jumlah produk di keranjang
-    public function updateKeranjang(Request $request, $id)
+    public function updateKeranjang(Request $request, int $id)
     {
         $request->validate([
             'jumlah' => 'required|integer|min:1',
@@ -209,7 +211,7 @@ class ProdukController extends Controller
     }
 
     // Menghapus produk dari keranjang
-    public function hapusKeranjang($id)
+    public function hapusKeranjang(int $id)
     {
         $keranjang = session('keranjang', []);
         unset($keranjang[$id]);
@@ -220,7 +222,7 @@ class ProdukController extends Controller
     }
 
     // Route pesan lama tetap dipertahankan
-    public function pesan(Request $request, $id)
+    public function pesan(Request $request, int $id)
     {
         $request->validate([
             'jumlah' => 'required|integer|min:1',

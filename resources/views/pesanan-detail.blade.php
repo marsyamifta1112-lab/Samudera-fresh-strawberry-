@@ -23,6 +23,8 @@
         .step.complete .step-label, .step.current .step-label { color: #333; font-weight: bold; }
         .cancelled { margin: 18px 0 0; color: #c6283d; font-weight: bold; }
         .payment-note { margin: -9px 0 21px; padding: 12px 15px; border-radius: 9px; background: #fff2dc; color: #865300; font-size: 13px; }
+        .shipping-note { margin:0 0 18px; padding:13px 15px; border:1px solid #dfece2; border-radius:9px; background:#f3f8f3; color:#245b3b; font-size:13px; }
+        .shipping-note p { margin:5px 0 0; color:#666; font-size:12px; line-height:1.5; }
         .detail-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid #eee; }
         .product-info { display: flex; align-items: center; gap: 14px; min-width: 0; }
         .product-image { width: 60px; height: 60px; border-radius: 9px; background: #fff5f5; object-fit: cover; }
@@ -105,6 +107,12 @@
             @endif
 
             <p class="muted">Status saat ini: <strong>{{ $statusPesanan }}</strong></p>
+            @if (!empty($pesanan->jadwal_pengiriman))
+                <div class="shipping-note">
+                    <strong>Jadwal barang dikirim dari toko: {{ \App\Support\OperationalSchedule::formatDate($pesanan->jadwal_pengiriman) }}</strong>
+                    <p>Ini rencana keberangkatan setelah pembayaran dikonfirmasi, bukan estimasi tanggal tiba. Lama pengiriman mengikuti kurir dan wilayah tujuan.</p>
+                </div>
+            @endif
         </section>
 
         <section class="panel">

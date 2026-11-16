@@ -30,6 +30,8 @@ class KeranjangTest extends TestCase
             $table->bigIncrements('id_pesanan');
             $table->unsignedBigInteger('id_pelanggan');
             $table->dateTime('tanggal_pemesanan');
+            $table->date('tanggal_pemrosesan')->nullable();
+            $table->date('jadwal_pengiriman')->nullable();
             $table->decimal('total_harga', 12, 2);
             $table->decimal('ongkir', 12, 2)->nullable()->default(0);
             $table->string('wilayah_ongkir', 120)->nullable();
@@ -79,6 +81,21 @@ class KeranjangTest extends TestCase
             $table->boolean('aktif')->default(true);
             $table->timestamps();
         });
+        Schema::create('pengaturan_operasional', function (Blueprint $table) {
+            $table->unsignedTinyInteger('id')->primary();
+            $table->time('jam_buka');
+            $table->time('jam_tutup');
+            $table->json('hari_operasional');
+            $table->json('tanggal_libur');
+            $table->dateTime('updated_at')->nullable();
+        });
+        DB::table('pengaturan_operasional')->insert([
+            'id' => 1,
+            'jam_buka' => '08:00:00',
+            'jam_tutup' => '17:00:00',
+            'hari_operasional' => json_encode([1, 2, 3, 4, 5, 6]),
+            'tanggal_libur' => json_encode([]),
+        ]);
         DB::table('ongkir_wilayah')->insert([
             'id' => 1,
             'nama_wilayah' => 'Ciwidey & Rancabali',
@@ -191,8 +208,8 @@ class KeranjangTest extends TestCase
             ->assertSee('Ringkasan Pesanan')
             ->assertSee('Subtotal Produk')
             ->assertSee('Ongkir')
-            ->assertSee('Pilih wilayah tujuan')
-            ->assertSee('Rp10.000')
+            ->assertSee('Belum terdeteksi')
+            ->assertSee('Isi alamat pengiriman')
             ->assertSee('Rp50.000');
     }
 
@@ -393,7 +410,7 @@ class KeranjangTest extends TestCase
         $this->assertNotNull($pembayaran->tanggal_pembayaran);
         $this->assertSame('menunggu', $pembayaran->status_pembayaran);
         $this->assertNotNull($pembayaran->bukti_pembayaran);
-        Storage::disk('local')->assertExists($pembayaran->bukti_pembayaran);
+        $this->assertTrue(Storage::disk('local')->exists($pembayaran->bukti_pembayaran));
     }
 
     public function test_customer_can_select_any_supported_transfer_bank_and_save_it_to_payment(): void

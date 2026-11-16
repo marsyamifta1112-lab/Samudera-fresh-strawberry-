@@ -444,6 +444,8 @@
             <h1 class="page-title">Beranda Pelanggan</h1>
         </div>
 
+        @include('partials.operational-hours')
+
         <div class="categories">
             @php
                 $kategoriAktif = $filters['kategori'] ?? null;
