@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\DeliveryEstimate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -18,6 +19,7 @@ class PembayaranController extends Controller
         }
 
         $pesanan->subtotal_produk = (float) $pesanan->total_harga - (float) ($pesanan->ongkir ?? 0);
+        $pesanan->estimasi_tiba = DeliveryEstimate::forStoredOrder($pesanan);
         $pembayaran = $this->findOrderPayment($pesanan->id_pesanan);
 
         return view('pembayaran', compact('pesanan', 'pembayaran'));
@@ -30,6 +32,7 @@ class PembayaranController extends Controller
             ? DB::table('pesanan')->where('id_pesanan', $id)->first()
             : $this->findCustomerOrder($id);
         abort_if(! $pesanan, 404);
+        $pesanan->estimasi_tiba = DeliveryEstimate::forStoredOrder($pesanan);
 
         $pembayaran = $this->findOrderPayment($pesanan->id_pesanan);
         abort_if(

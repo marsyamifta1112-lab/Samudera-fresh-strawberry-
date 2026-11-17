@@ -106,8 +106,8 @@ class CheckoutShippingTest extends TestCase
             ->assertOk()
             ->assertSee('Wilayah Terdeteksi')
             ->assertSee('Jam Operasional')
-            ->assertSee('Jadwal barang dikirim dari toko')
-            ->assertSee('bukan estimasi tanggal tiba')
+            ->assertSee('Jadwal barang berangkat dari toko')
+            ->assertSee('Perkiraan tiba di rumah')
             ->assertSee('Ongkir dihitung otomatis dari kecamatan/kota pada alamat')
             ->assertSee('value="Transfer"', false)
             ->assertSee('value="QRIS"', false);
@@ -187,7 +187,8 @@ class CheckoutShippingTest extends TestCase
             ->assertOk()
             ->assertSee('Bayar dengan QRIS')
             ->assertSee('qris-merchant.png')
-            ->assertSee('Jadwal barang dikirim dari toko:')
+            ->assertSee('Perkiraan tiba di rumah:')
+            ->assertSee('Jadwal berangkat dari toko:')
             ->assertDontSee('Bank Pengirim')
             ->assertDontSee('QRIS DEMO')
             ->assertSee('Upload Bukti Pembayaran');

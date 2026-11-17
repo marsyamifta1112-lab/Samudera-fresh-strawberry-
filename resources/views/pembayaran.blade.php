@@ -125,11 +125,14 @@
             </div>
         @endif
 
-        @if (!empty($pesanan->jadwal_pengiriman))
+        @if (!empty($pesanan->estimasi_tiba))
             <div class="shipping-info" role="status">
-                <strong>Jadwal barang dikirim dari toko: {{ \App\Support\OperationalSchedule::formatDate($pesanan->jadwal_pengiriman) }}</strong>
-                <p>Ini rencana keberangkatan setelah pembayaran dikonfirmasi, bukan estimasi tanggal tiba. Lama pengiriman mengikuti kurir dan wilayah tujuan.</p>
+                <strong>Perkiraan tiba di rumah: {{ $pesanan->estimasi_tiba['label'] }}</strong>
+                <p>Perkiraan berdasarkan wilayah {{ $pesanan->wilayah_ongkir }} dan dihitung dalam hari kalender. Waktu tiba dapat berubah mengikuti kurir.</p>
             </div>
+        @endif
+        @if (!empty($pesanan->jadwal_pengiriman))
+            <p class="muted">Jadwal berangkat dari toko: {{ \App\Support\OperationalSchedule::formatDate($pesanan->jadwal_pengiriman) }}.</p>
         @endif
 
         <section class="panel">

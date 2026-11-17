@@ -132,11 +132,11 @@
 
     <section class="shipping-schedule" aria-label="Jadwal pengiriman">
         <div>
-            <span class="shipping-label">Jadwal barang dikirim dari toko</span>
+            <span class="shipping-label">Jadwal barang berangkat dari toko</span>
             <strong>{{ $operationalSchedule['label_pengiriman'] }}</strong>
             <p>{{ $operationalSchedule['pesan_pengiriman'] }}</p>
         </div>
-        <small>Ini rencana barang berangkat dari toko setelah pembayaran dikonfirmasi, bukan estimasi tanggal tiba. Lama pengiriman mengikuti kurir dan wilayah tujuan.</small>
+        <small>Perkiraan tiba ditampilkan terpisah berdasarkan wilayah tujuan. Jadwal berangkat dapat disesuaikan setelah pembayaran dikonfirmasi.</small>
     </section>
 
     @if (session('error'))
@@ -218,6 +218,10 @@
                     <span id="wilayah-display" aria-live="polite">Belum terdeteksi</span>
                 </div>
                 <div class="item">
+                    <span>Perkiraan tiba di rumah</span>
+                    <span id="arrival-estimate-display" aria-live="polite">Isi alamat pengiriman</span>
+                </div>
+                <div class="item">
                     <span>Ongkir</span>
                     <span id="ongkir-display">Isi alamat pengiriman</span>
                 </div>
@@ -227,6 +231,7 @@
                 </div>
 
                 <p id="ongkir-note">Ongkir dihitung otomatis dari kecamatan/kota pada alamat dan tidak melebihi subtotal produk.</p>
+                <p class="muted">Estimasi dihitung dalam hari kalender dari wilayah dan jadwal toko; dapat berubah mengikuti kurir.</p>
                 <button type="submit" class="btn">Buat Pesanan &amp; Lanjut Bayar</button>
             </aside>
         </div>
@@ -235,11 +240,13 @@
 <script>
     const alamatPengiriman = document.getElementById('alamat_pengiriman');
     const wilayahDisplay = document.getElementById('wilayah-display');
+    const arrivalEstimateDisplay = document.getElementById('arrival-estimate-display');
     const ongkirDisplay = document.getElementById('ongkir-display');
     const totalDisplay = document.getElementById('total-display');
     const subtotalProduk = {{ (int) $subtotalProduk }};
     const aturanWilayah = @json($aturanWilayahOngkir);
     const tarifWilayah = @json($tarifWilayahOngkir);
+    const arrivalEstimates = @json($arrivalEstimates);
     const formatRupiah = (amount) => 'Rp' + new Intl.NumberFormat('id-ID').format(amount);
 
     function updateOrderTotal() {
@@ -250,11 +257,16 @@
 
         if (!alamat.trim()) {
             wilayahDisplay.textContent = 'Belum terdeteksi';
+            arrivalEstimateDisplay.textContent = 'Isi alamat pengiriman';
             ongkirDisplay.textContent = 'Isi alamat pengiriman';
             totalDisplay.textContent = 'Isi alamat pengiriman';
             return;
         }
 
+        const arrivalEstimate = arrivalEstimates[aturan.name];
+        arrivalEstimateDisplay.textContent = arrivalEstimate
+            ? arrivalEstimate.label
+            : 'Estimasi belum tersedia';
         const tarif = tarifWilayah[aturan.name];
         if (typeof tarif !== 'number') {
             wilayahDisplay.textContent = aturan.name;

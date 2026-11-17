@@ -264,6 +264,12 @@
             <span>Wilayah tujuan</span>
             <span>{{ $pesanan->wilayah_ongkir ?: '-' }}</span>
         </div>
+        @if (!empty($pesanan->estimasi_tiba))
+            <div class="meta">
+                <span>Perkiraan tiba di rumah</span>
+                <span>{{ $pesanan->estimasi_tiba['label'] }}</span>
+            </div>
+        @endif
         <div class="meta">
             <span>Subtotal produk</span>
             <span>Rp{{ number_format($pesanan->subtotal_produk, 0, ',', '.') }}</span>

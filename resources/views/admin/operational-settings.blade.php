@@ -4,7 +4,7 @@
     <div class="page-heading">
         <div>
             <h2>Jam Operasional &amp; Hari Libur</h2>
-            <p>Pengaturan ini dipakai untuk menampilkan jam toko dan menghitung jadwal pengiriman pesanan baru.</p>
+            <p>Pengaturan ini dipakai untuk menampilkan jam toko dan menghitung jadwal berangkat pesanan baru. Estimasi tiba ditampilkan terpisah sesuai wilayah tujuan.</p>
         </div>
     </div>
 
@@ -68,7 +68,7 @@
             </fieldset>
 
             <div class="settings-footer">
-                <p>Pesanan pada hari operasional dijadwalkan berangkat pada hari operasional berikutnya. Jika hari berikutnya tutup atau libur, jadwal beralih ke hari operasional selanjutnya. Ini jadwal barang berangkat dari toko, bukan estimasi tanggal tiba.</p>
+                <p>Pesanan dijadwalkan berangkat pada hari operasional berikutnya. Jika hari tersebut tutup atau libur, jadwal beralih ke hari operasional selanjutnya. Estimasi tiba di rumah dihitung terpisah menurut wilayah dan dalam hari kalender; waktu kurir dapat berubah.</p>
                 <button class="button" type="submit">Simpan Pengaturan</button>
             </div>
         </form>

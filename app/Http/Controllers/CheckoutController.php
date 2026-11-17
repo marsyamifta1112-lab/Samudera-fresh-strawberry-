@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\DeliveryEstimate;
 use App\Support\OperationalSchedule;
+use App\Support\ShippingZoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use App\Support\ShippingZoneResolver;
 
 class CheckoutController extends Controller
 {
@@ -79,7 +80,19 @@ class CheckoutController extends Controller
         $tarifWilayahOngkir = $wilayahOngkir
             ->pluck('tarif', 'nama_wilayah')
             ->map(fn ($tarif) => (int) $tarif);
-        $operationalSchedule = OperationalSchedule::current();
+        $settings = OperationalSchedule::settings();
+        $orderedAt = Carbon::now('UTC');
+        $operationalSchedule = OperationalSchedule::calculate($settings, $orderedAt);
+        $arrivalEstimates = [];
+
+        foreach ($wilayahOngkir as $zone) {
+            $arrivalEstimates[$zone->nama_wilayah] = DeliveryEstimate::forOrder(
+                $settings,
+                $orderedAt,
+                $zone->nama_wilayah,
+                $operationalSchedule['tanggal_pengiriman']
+            );
+        }
 
         return view('checkout', compact(
             'keranjang',
@@ -87,7 +100,8 @@ class CheckoutController extends Controller
             'wilayahOngkir',
             'aturanWilayahOngkir',
             'tarifWilayahOngkir',
-            'operationalSchedule'
+            'operationalSchedule',
+            'arrivalEstimates'
         ));
     }
 
@@ -208,9 +222,16 @@ class CheckoutController extends Controller
             );
 
             $orderedAtUtc = Carbon::now('UTC');
+            $operationalSettings = OperationalSchedule::settings();
             $shippingSchedule = OperationalSchedule::calculate(
-                OperationalSchedule::settings(),
+                $operationalSettings,
                 $orderedAtUtc->copy()->setTimezone(OperationalSchedule::TIMEZONE)
+            );
+            $arrivalEstimate = DeliveryEstimate::forOrder(
+                $operationalSettings,
+                $orderedAtUtc,
+                $wilayahOngkir->nama_wilayah,
+                $shippingSchedule['tanggal_pengiriman']
             );
 
             // Simpan data pesanan
@@ -246,6 +267,7 @@ class CheckoutController extends Controller
             return [
                 'id_pesanan' => $idPesanan,
                 'jadwal' => $shippingSchedule,
+                'estimasi_tiba' => $arrivalEstimate,
             ];
         });
 
@@ -255,7 +277,7 @@ class CheckoutController extends Controller
         return redirect()->route('pembayaran.show', $order['id_pesanan'])
             ->with(
                 'success',
-                'Pesanan berhasil dibuat. Jadwal barang dikirim dari toko: '.$order['jadwal']['label_pengiriman'].'. Ini bukan estimasi tanggal barang tiba; silakan lanjutkan pembayaran.'
+                'Pesanan berhasil dibuat. Perkiraan tiba di rumah: '.$order['estimasi_tiba']['label'].'. Perkiraan berdasarkan wilayah tujuan dan dapat berubah mengikuti kurir; silakan lanjutkan pembayaran.'
             );
     }
 }

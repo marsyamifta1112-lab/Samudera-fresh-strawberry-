@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\ShippingZoneResolver;
+use App\Support\DeliveryEstimate;
 use App\Support\OperationalSchedule;
+use App\Support\ShippingZoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -318,6 +319,7 @@ class AdminController extends Controller
             ->where('p.id_pesanan', $id)
             ->first();
         abort_if(! $pesanan, 404);
+        $pesanan->estimasi_tiba = DeliveryEstimate::forStoredOrder($pesanan);
 
         $detailPesanan = DB::table('detail_pesanan as dp')
             ->leftJoin('produk as pr', 'pr.id_produk', '=', 'dp.id_produk')

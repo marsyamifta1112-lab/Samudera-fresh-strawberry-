@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\DeliveryEstimate;
 use App\Support\OrderMetadata;
 use Illuminate\Support\Facades\DB;
 
@@ -51,6 +52,7 @@ class PesananController extends Controller
             abort(404);
         }
 
+        $pesanan->estimasi_tiba = DeliveryEstimate::forStoredOrder($pesanan);
         $pembayaran = DB::table('pembayaran')
             ->where('id_pesanan', $pesanan->id_pesanan)
             ->first();

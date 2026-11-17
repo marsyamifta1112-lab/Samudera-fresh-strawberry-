@@ -6,7 +6,8 @@
         <div class="detail-grid">
             <div><div class="detail-label">Pelanggan</div><div class="detail-value">{{ $pesanan->nama_pelanggan }}</div></div>
             <div><div class="detail-label">Tanggal Pesanan</div><div class="detail-value">{{ $pesanan->tanggal_pemesanan ? \Illuminate\Support\Carbon::parse($pesanan->tanggal_pemesanan)->format('d/m/Y') : '-' }}</div></div>
-            <div><div class="detail-label">Jadwal Pengiriman dari Toko</div><div class="detail-value">{{ $pesanan->jadwal_pengiriman ? \App\Support\OperationalSchedule::formatDate($pesanan->jadwal_pengiriman) : 'Belum tersedia' }}</div></div>
+            <div><div class="detail-label">Perkiraan Tiba di Rumah</div><div class="detail-value">{{ $pesanan->estimasi_tiba['label'] ?? 'Belum tersedia' }}</div></div>
+            <div><div class="detail-label">Jadwal Berangkat dari Toko</div><div class="detail-value">{{ $pesanan->jadwal_pengiriman ? \App\Support\OperationalSchedule::formatDate($pesanan->jadwal_pengiriman) : 'Belum tersedia' }}</div></div>
             <div style="grid-column:1/-1"><div class="detail-label">Alamat</div><div class="detail-value">{{ $pesanan->alamat_pengiriman ?? 'Alamat tidak tersedia' }}</div></div>
             <div><div class="detail-label">Produk</div><div class="detail-products">
                 @forelse ($detailPesanan as $item)
