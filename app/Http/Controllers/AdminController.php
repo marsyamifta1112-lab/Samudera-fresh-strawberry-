@@ -633,6 +633,11 @@ class AdminController extends Controller
             throw new \RuntimeException('Tidak dapat membuat file sementara untuk laporan Excel.');
         }
 
+        if (! unlink($filePath)) {
+            throw new \RuntimeException('Tidak dapat menyiapkan file sementara untuk laporan Excel.');
+        }
+
+        $filePath .= '.zip';
         $this->writeSalesWorkbook($filePath, $rows, $from, $to);
 
         return response()->download(
@@ -1402,25 +1407,48 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
         $files['xl/media/logo-samudera.jpg'] = file_get_contents($logoPath);
     }
 
-    $zip = new \ZipArchive();
-    $result = $zip->open($filePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+    if (class_exists(\ZipArchive::class)) {
+        $zip = new \ZipArchive();
+        $result = $zip->open($filePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
-    if ($result !== true) {
-        @unlink($filePath);
-        throw new \RuntimeException('Tidak dapat membangun file Excel laporan.');
-    }
-
-    foreach ($files as $name => $contents) {
-        if (! $zip->addFromString($name, $contents)) {
-            $zip->close();
+        if ($result !== true) {
             @unlink($filePath);
-            throw new \RuntimeException('Gagal menulis bagian '.$name.' pada file Excel.');
+            throw new \RuntimeException('Tidak dapat membangun file Excel laporan.');
         }
+
+        foreach ($files as $name => $contents) {
+            if (! $zip->addFromString($name, $contents)) {
+                $zip->close();
+                @unlink($filePath);
+                throw new \RuntimeException('Gagal menulis bagian '.$name.' pada file Excel.');
+            }
+        }
+
+        if (! $zip->close()) {
+            @unlink($filePath);
+            throw new \RuntimeException('Gagal menyelesaikan file Excel laporan.');
+        }
+
+        return;
     }
 
-    if (! $zip->close()) {
+    if (! class_exists(\PharData::class)) {
         @unlink($filePath);
-        throw new \RuntimeException('Gagal menyelesaikan file Excel laporan.');
+        throw new \RuntimeException('Ekspor Excel memerlukan ekstensi PHP zip atau phar.');
+    }
+
+    try {
+        $archive = new \PharData($filePath, 0, null, \Phar::ZIP);
+
+        foreach ($files as $name => $contents) {
+            $archive->addFromString($name, $contents);
+        }
+
+        unset($archive);
+    } catch (\Throwable $exception) {
+        unset($archive);
+        @unlink($filePath);
+        throw $exception;
     }
 }
 

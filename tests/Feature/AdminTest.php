@@ -1014,11 +1014,10 @@ class AdminTest extends TestCase
             ->assertDownload('laporan-penjualan-2026-05-01-2026-05-31.xlsx')
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-        $workbook = new \ZipArchive;
         $downloadResponse = $response->baseResponse;
         $this->assertInstanceOf(\Symfony\Component\HttpFoundation\BinaryFileResponse::class, $downloadResponse);
-        $this->assertSame(true, $workbook->open($downloadResponse->getFile()->getPathname()));
-        $sheet = $workbook->getFromName('xl/worksheets/sheet1.xml');
+        $workbook = new \PharData($downloadResponse->getFile()->getPathname(), 0, null, \Phar::ZIP);
+        $sheet = $workbook['xl/worksheets/sheet1.xml']->getContent();
         $this->assertIsString($sheet);
         $this->assertStringContainsString('Subtotal Produk (Rp)', $sheet);
         $this->assertStringContainsString('Ongkir (Rp)', $sheet);
@@ -1033,23 +1032,23 @@ class AdminTest extends TestCase
         $this->assertStringContainsString('Pelanggan Mei', $sheet);
         $this->assertStringContainsString('BCA', $sheet);
         $this->assertStringNotContainsString('Pelanggan April', $sheet);
-        $styles = $workbook->getFromName('xl/styles.xml');
+        $styles = $workbook['xl/styles.xml']->getContent();
         $this->assertIsString($styles);
         $this->assertStringContainsString('<font><name val="Arial"/><b/><color rgb="FFFFFFFF"/><sz val="11"/></font>', $styles);
         $this->assertStringContainsString('<drawing r:id="rId1"/>', $sheet);
-        $drawing = $workbook->getFromName('xl/drawings/drawing1.xml');
+        $drawing = $workbook['xl/drawings/drawing1.xml']->getContent();
         $this->assertIsString($drawing);
         $this->assertStringContainsString('<xdr:col>0</xdr:col>', $drawing);
         $this->assertStringContainsString('<xdr:ext cx="450000" cy="450000"/>', $drawing);
-        $logo = $workbook->getFromName('xl/media/logo-samudera.jpg');
+        $logo = $workbook['xl/media/logo-samudera.jpg']->getContent();
         $this->assertIsString($logo);
         $this->assertGreaterThan(0, strlen($logo));
         foreach (['[Content_Types].xml', 'xl/workbook.xml', 'xl/styles.xml', 'xl/worksheets/sheet1.xml'] as $part) {
-            $xml = $workbook->getFromName($part);
+            $xml = $workbook[$part]->getContent();
             $this->assertIsString($xml);
             $this->assertNotFalse(simplexml_load_string($xml));
         }
-        $workbook->close();
+        unset($workbook);
     }
 
     public function test_admin_sidebar_petugas_menu_opens_database_staff_listing(): void
