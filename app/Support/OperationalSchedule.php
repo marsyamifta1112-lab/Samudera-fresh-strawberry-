@@ -71,17 +71,11 @@ class OperationalSchedule
 
         $localNow = Carbon::instance($now)->setTimezone(self::TIMEZONE);
         $todayIsOperating = self::isOperatingDate($localNow, $days, $holidays);
-        $weekday = $localNow->isoWeekday();
-        $targetOperatingDays = 1;
-        if ($todayIsOperating && $weekday >= 1 && $weekday <= 5) {
-            $targetOperatingDays = $localNow->format('H:i') < '12:00' ? 1 : 2;
-        }
-
         $shippingDate = self::nextOperatingDate(
             $localNow,
             $days,
             $holidays,
-            $targetOperatingDays
+            1
         );
         $beforeOpening = $localNow->format('H:i') < $openingTime;
         $beforeClosing = $localNow->format('H:i') < $closingTime;
@@ -90,12 +84,7 @@ class OperationalSchedule
             && $beforeClosing;
         $scheduleMessage = ! $todayIsOperating
             ? 'Toko tidak beroperasi pada hari pemesanan; pesanan dijadwalkan dikirim pada hari operasional berikutnya.'
-            : match (true) {
-                $weekday === 6 => 'Pesanan Sabtu dijadwalkan dikirim pada hari operasional berikutnya.',
-                $weekday === 7 => 'Pesanan Minggu dijadwalkan dikirim pada hari operasional berikutnya.',
-                $targetOperatingDays === 1 => 'Pesanan Senin–Jumat sebelum pukul 12.00 dijadwalkan dikirim pada hari operasional berikutnya.',
-                default => 'Pesanan Senin–Jumat pada atau setelah pukul 12.00 dijadwalkan dikirim pada hari operasional kedua setelah tanggal pemesanan.',
-            };
+            : 'Pesanan pada hari operasional dijadwalkan dikirim pada hari operasional berikutnya.';
 
         $operatingDays = array_values(array_intersect(range(1, 7), $days));
         $dayNames = array_map(

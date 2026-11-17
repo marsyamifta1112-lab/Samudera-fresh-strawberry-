@@ -68,7 +68,7 @@
             </fieldset>
 
             <div class="settings-footer">
-                <p>Senin–Jumat sebelum pukul 12.00: hari operasional berikutnya; pukul 12.00 atau setelahnya: hari operasional kedua. Pesanan Sabtu atau hari tutup/libur: hari operasional berikutnya. Ini jadwal barang berangkat dari toko, bukan estimasi tanggal tiba.</p>
+                <p>Pesanan pada hari operasional dijadwalkan berangkat pada hari operasional berikutnya. Jika hari berikutnya tutup atau libur, jadwal beralih ke hari operasional selanjutnya. Ini jadwal barang berangkat dari toko, bukan estimasi tanggal tiba.</p>
                 <button class="button" type="submit">Simpan Pengaturan</button>
             </div>
         </form>

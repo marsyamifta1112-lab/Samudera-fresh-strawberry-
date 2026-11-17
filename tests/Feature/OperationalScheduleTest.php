@@ -23,15 +23,15 @@ class OperationalScheduleTest extends TestCase
         }
     }
 
-    public function test_weekday_orders_at_or_after_noon_are_scheduled_for_the_second_operating_day(): void
+    public function test_weekday_orders_at_or_after_noon_are_scheduled_for_the_next_operating_day(): void
     {
-        foreach (['12:00', '17:00', '23:59'] as $time) {
+        foreach (['12:00', '17:00', '22:00', '23:59'] as $time) {
             $schedule = OperationalSchedule::calculate(
                 $this->settings(),
                 Carbon::parse('2026-11-16 '.$time, OperationalSchedule::TIMEZONE)
             );
 
-            $this->assertSame('2026-11-18', $schedule['tanggal_pengiriman'], $time);
+            $this->assertSame('2026-11-17', $schedule['tanggal_pengiriman'], $time);
         }
     }
 
@@ -44,12 +44,12 @@ class OperationalScheduleTest extends TestCase
 
         $this->assertSame('2026-11-17', $schedule['tanggal_pengiriman']);
         $this->assertSame(
-            'Pesanan Senin–Jumat sebelum pukul 12.00 dijadwalkan dikirim pada hari operasional berikutnya.',
+            'Pesanan pada hari operasional dijadwalkan dikirim pada hari operasional berikutnya.',
             $schedule['pesan_pengiriman']
         );
     }
 
-    public function test_order_after_noon_skips_holidays_when_counting_operating_days(): void
+    public function test_orders_skip_holidays_when_finding_next_operating_day(): void
     {
         $settings = $this->settings();
         $settings['tanggal_libur'] = ['2026-11-17'];
@@ -59,7 +59,7 @@ class OperationalScheduleTest extends TestCase
             Carbon::parse('2026-11-16 12:00', OperationalSchedule::TIMEZONE)
         );
 
-        $this->assertSame('2026-11-19', $schedule['tanggal_pengiriman']);
+        $this->assertSame('2026-11-18', $schedule['tanggal_pengiriman']);
     }
 
     public function test_saturday_orders_are_scheduled_for_the_next_operating_day_regardless_of_time(): void
