@@ -1319,9 +1319,6 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
         ];
     }
 
-    $logoPath = public_path('images/logo samudera.jpeg');
-    $hasLogo = is_file($logoPath) && is_readable($logoPath);
-
     $worksheetRows = [
         '<row r="1" ht="45" customHeight="1">'
             . '<c r="B1" t="inlineStr" s="3"><is><t>Samudera Fresh Strawberry</t></is></c>'
@@ -1402,7 +1399,6 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
         .'<sheetData>'.implode('', $worksheetRows).'</sheetData>'
         .'<autoFilter ref="A7:J'.$lastRow.'"/>'
         .'<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'
-        .($hasLogo ? '<drawing r:id="rId1"/>' : '')
         .'</worksheet>';
 
     $files = [
@@ -1411,11 +1407,9 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
             .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
             .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             .'<Default Extension="xml" ContentType="application/xml"/>'
-            .($hasLogo ? '<Default Extension="jpg" ContentType="image/jpeg"/>' : '')
             .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-            .($hasLogo ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : '')
             .'</Types>',
 
         '_rels/.rels' =>
@@ -1469,36 +1463,6 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
 
         'xl/worksheets/sheet1.xml' => $sheetXml,
     ];
-
-    if ($hasLogo) {
-        $files['xl/worksheets/_rels/sheet1.xml.rels'] =
-            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'
-            .'</Relationships>';
-
-        $files['xl/drawings/drawing1.xml'] =
-            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'
-            .' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
-            .' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            .'<xdr:oneCellAnchor>'
-            .'<xdr:from><xdr:col>0</xdr:col><xdr:colOff>50000</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>50000</xdr:rowOff></xdr:from>'
-            .'<xdr:ext cx="450000" cy="450000"/>'
-            .'<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" name="Logo Samudera Fresh Strawberry"/><xdr:cNvPicPr/></xdr:nvPicPr>'
-            .'<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
-            .'<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
-            .'</xdr:pic><xdr:clientData/></xdr:oneCellAnchor>'
-            .'</xdr:wsDr>';
-
-        $files['xl/drawings/_rels/drawing1.xml.rels'] =
-            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo-samudera.jpg"/>'
-            .'</Relationships>';
-
-        $files['xl/media/logo-samudera.jpg'] = file_get_contents($logoPath);
-    }
 
     if (class_exists(\ZipArchive::class)) {
         $zip = new \ZipArchive();

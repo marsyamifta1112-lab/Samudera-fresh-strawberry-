@@ -1095,6 +1095,8 @@ class AdminTest extends TestCase
         $downloadResponse = $response->baseResponse;
         $this->assertInstanceOf(\Symfony\Component\HttpFoundation\BinaryFileResponse::class, $downloadResponse);
         $workbook = new \PharData($downloadResponse->getFile()->getPathname(), 0, null, \Phar::ZIP);
+        $this->assertFalse(isset($workbook['xl/drawings/drawing1.xml']));
+        $this->assertFalse(isset($workbook['xl/media/logo-samudera.jpg']));
         $sheet = $workbook['xl/worksheets/sheet1.xml']->getContent();
         $this->assertIsString($sheet);
         $this->assertStringContainsString('LAPORAN PENJUALAN', $sheet);
@@ -1111,15 +1113,7 @@ class AdminTest extends TestCase
         $this->assertStringContainsString('Pelanggan Mei', $sheet);
         $this->assertStringContainsString('BCA', $sheet);
         $this->assertStringNotContainsString('Pelanggan April', $sheet);
-        $hasLogo = is_file(public_path('images/logo samudera.jpeg'));
-        if ($hasLogo) {
-            $contentTypes = $workbook['[Content_Types].xml']->getContent();
-            $this->assertStringContainsString('<drawing r:id="rId1"/>', $sheet);
-            $this->assertStringContainsString('Extension="jpg" ContentType="image/jpeg"', $contentTypes);
-            $this->assertStringContainsString('/xl/drawings/drawing1.xml', $contentTypes);
-        } else {
-            $this->assertStringNotContainsString('<drawing ', $sheet);
-        }
+        $this->assertStringNotContainsString('<drawing ', $sheet);
         $styles = $workbook['xl/styles.xml']->getContent();
         $this->assertIsString($styles);
         $this->assertStringContainsString('<font><name val="Arial"/><b/><color rgb="FFFFFFFF"/><sz val="11"/></font>', $styles);
@@ -1131,22 +1125,6 @@ class AdminTest extends TestCase
             'xl/styles.xml',
             'xl/worksheets/sheet1.xml',
         ];
-        if ($hasLogo) {
-            $xmlParts = array_merge($xmlParts, [
-                'xl/worksheets/_rels/sheet1.xml.rels',
-                'xl/drawings/drawing1.xml',
-                'xl/drawings/_rels/drawing1.xml.rels',
-            ]);
-            $this->assertStringContainsString(
-                'Target="../drawings/drawing1.xml"',
-                $workbook['xl/worksheets/_rels/sheet1.xml.rels']->getContent()
-            );
-            $this->assertStringContainsString(
-                'Target="../media/logo-samudera.jpg"',
-                $workbook['xl/drawings/_rels/drawing1.xml.rels']->getContent()
-            );
-            $this->assertIsString($workbook['xl/media/logo-samudera.jpg']->getContent());
-        }
         foreach ($xmlParts as $part) {
             $xml = $workbook[$part]->getContent();
             $this->assertIsString($xml);
