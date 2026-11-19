@@ -280,8 +280,10 @@
                 </span>
 
                 <div class="description-title">Deskripsi</div>
-                <p class="description">
-                    {{ $produk->deskripsi ?: 'Produk olahan strawberry pilihan dari Ciwidey.' }}
+                <p class="description" id="{{ $isStrawberryFresh ? 'grade-description' : 'product-description' }}">
+                    {{ $initialGrade
+                        ? \App\Support\ProductCatalog::gradeDescription($initialGrade->grade)
+                        : ($produk->deskripsi ?: 'Produk olahan strawberry pilihan dari Ciwidey.') }}
                 </p>
 
                 @if($produk->berat_gram)
@@ -304,6 +306,7 @@
                                         data-price="{{ $grade->harga_per_kg }}"
                                         data-stock="{{ $grade->stok_kg }}"
                                         data-image="{{ \App\Support\ProductCatalog::gradeImage($grade->grade) }}"
+                                        data-description="{{ \App\Support\ProductCatalog::gradeDescription($grade->grade) }}"
                                         @selected(old('grade', $initialGrade->grade ?? null) === $grade->grade)
                                     >Grade {{ $grade->grade }} · Rp{{ number_format($grade->harga_per_kg, 0, ',', '.') }}/kg · Stok {{ \App\Support\ProductCatalog::formatKilogramStock($grade->stok_kg) }} kg</option>
                                 @endforeach
@@ -362,6 +365,7 @@
         const gradeSelect = document.getElementById('grade-select');
         const gradePrice = document.getElementById('grade-price');
         const gradeStock = document.getElementById('grade-stock');
+        const gradeDescription = document.getElementById('grade-description');
         const addButton = document.querySelector('.add-button');
         const productImage = document.querySelector('.product-image');
 
@@ -387,6 +391,7 @@
                 gradePrice.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(Number(option.dataset.price)) + '/kg';
                 gradeStock.textContent = 'Stok: ' + new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 }).format(Number(option.dataset.stock)) + ' kg';
                 productImage.src = "{{ asset('images') }}/" + option.dataset.image;
+                gradeDescription.textContent = option.dataset.description;
                 syncQuantityButtons();
             });
             gradeSelect.dispatchEvent(new Event('change'));

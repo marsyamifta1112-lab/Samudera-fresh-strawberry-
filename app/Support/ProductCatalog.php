@@ -36,6 +36,16 @@ class ProductCatalog
         };
     }
 
+    public static function gradeDescription(string $grade): string
+    {
+        return match ($grade) {
+            'A' => 'Grade A adalah pilihan premium untuk dinikmati segar atau disajikan di momen spesial.',
+            'B' => 'Grade B menawarkan pilihan seimbang untuk camilan dan konsumsi sehari-hari.',
+            'C' => 'Grade C adalah pilihan lebih terjangkau yang cocok juga untuk jus dan aneka olahan.',
+            default => '',
+        };
+    }
+
     public static function formatKilogramStock(float|int|string|null $stock): string
     {
         return rtrim(rtrim(number_format((float) $stock, 3, ',', '.'), '0'), ',');

@@ -133,6 +133,21 @@ class ProdukFilterTest extends TestCase
             ->assertSee(asset('images/strawberry-grade-b.jpg'));
     }
 
+    public function test_strawberry_detail_description_changes_with_the_selected_grade(): void
+    {
+        $strawberryId = $this->createProduct('Strawberry Segar 500g', 'Deskripsi umum', 20000, 500);
+
+        foreach ([
+            'A' => 'Grade A adalah pilihan premium untuk dinikmati segar atau disajikan di momen spesial.',
+            'B' => 'Grade B menawarkan pilihan seimbang untuk camilan dan konsumsi sehari-hari.',
+            'C' => 'Grade C adalah pilihan lebih terjangkau yang cocok juga untuk jus dan aneka olahan.',
+        ] as $grade => $description) {
+            $this->get(route('produk.show', ['id' => $strawberryId, 'grade' => $grade]))
+                ->assertOk()
+                ->assertSeeText($description);
+        }
+    }
+
     public function test_price_and_weight_ranges_filter_independently(): void
     {
         $this->createProduct('Strawberry Segar 250g', 'Buah segar', 20000, 250);
@@ -307,8 +322,12 @@ class ProdukFilterTest extends TestCase
 
         $this->get(route('produk.show', 1))
             ->assertOk()
-            ->assertSee('Strawberry segar pilihan langsung dari Ciwidey.')
-            ->assertSee('camilan sehat.');
+            ->assertSeeText('Grade A adalah pilihan premium untuk dinikmati segar atau disajikan di momen spesial.');
+
+        $this->assertDatabaseHas('produk', [
+            'nama_produk' => 'Strawberry Segar 250g',
+            'deskripsi' => 'Strawberry segar pilihan langsung dari Ciwidey. Dipetik saat matang dengan rasa manis dan sedikit asam yang menyegarkan, cocok dinikmati langsung sebagai camilan sehat.',
+        ]);
 
         $this->assertDatabaseHas('produk', [
             'nama_produk' => 'Keripik Strawberry 100g',
