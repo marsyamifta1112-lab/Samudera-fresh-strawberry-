@@ -280,6 +280,39 @@ class ReturnBarangTest extends TestCase
             ->assertSee(route('admin.returns.proof', [1, 1]));
     }
 
+    public function test_admin_can_list_legacy_returns_without_grade_metadata(): void
+    {
+        DB::table('pesanan')->where('id_pesanan', 1)->update([
+            'catatan' => OrderMetadata::encode('Tolong hati-hati', [[
+                'id_return' => 1,
+                'id_detail' => 1,
+                'id_pesanan' => 1,
+                'id_pelanggan' => 1,
+                'id_produk' => 1,
+                'jumlah' => 1,
+                'jumlah_pengembalian' => '25000.00',
+                'alasan' => 'Produk rusak saat diterima.',
+                'foto_bukti' => 'return-bukti/bukti.jpg',
+                'bank_pengembalian' => 'BCA',
+                'nama_pemilik_rekening' => 'Pelanggan Satu',
+                'nomor_rekening' => '1234567890',
+                'status_return' => 'Diajukan',
+                'catatan_admin' => null,
+                'status_pengembalian_dana' => 'Menunggu',
+                'referensi_transfer' => null,
+                'stok_dikembalikan_at' => null,
+                'dana_ditransfer_at' => null,
+                'created_at' => '2026-10-10 12:00:00',
+                'updated_at' => '2026-10-10 12:00:00',
+            ]]),
+        ]);
+
+        $this->admin()->get(route('admin.returns'))
+            ->assertOk()
+            ->assertSee('Stroberi Segar')
+            ->assertSee('Jumlah: 1');
+    }
+
     public function test_customer_cannot_access_another_customers_return_proof_and_admin_role_is_required(): void
     {
         Storage::fake('local');

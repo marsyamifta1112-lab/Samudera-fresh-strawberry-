@@ -138,6 +138,8 @@ class ReturnController extends Controller
             ->flatMap(function (object $order): array {
                 return collect(OrderMetadata::decode($order->catatan)['returns'])
                     ->map(function (array $return) use ($order): object {
+                        $return['grade'] = $return['grade'] ?? null;
+                        $return['satuan'] = $return['satuan'] ?? null;
                         $return['nama_pelanggan'] = $order->nama_pelanggan;
                         $return['nama_produk'] = DB::table('produk')
                             ->where('id_produk', $return['id_produk'])
