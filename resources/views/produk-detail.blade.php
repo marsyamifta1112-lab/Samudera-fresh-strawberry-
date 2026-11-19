@@ -8,8 +8,8 @@
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            background: #fffdf8;
-            color: #292929;
+            background: #fff9f5;
+            color: #292524;
             font-family: Arial, Helvetica, sans-serif;
         }
         a { color: inherit; text-decoration: none; }
@@ -46,12 +46,31 @@
             background: #ffe7ec;
             font-size: 18px;
         }
-        main { width: 91%; max-width: 1050px; margin: 34px auto 60px; }
-        h1 { margin: 0 0 20px; text-align: center; font-size: 24px; }
+        main { width: min(1120px, 92%); margin: 34px auto 64px; }
+        .detail-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        .detail-page-title {
+            margin: 0 0 22px;
+            color: #245b3b;
+            font-size: clamp(24px, 3vw, 32px);
+            letter-spacing: -.7px;
+        }
+        .detail-eyebrow {
+            color: #bb4858;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+        }
         .alert {
             margin-bottom: 16px;
             padding: 12px 15px;
-            border-radius: 8px;
+            border-radius: 12px;
             background: #e5f2e9;
             color: #245b3b;
             font-size: 14px;
@@ -59,94 +78,112 @@
         .alert.error { background: #fde3e8; color: #b42342; }
         .detail-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 18px;
+            grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+            align-items: stretch;
+            gap: 24px;
         }
         .image-panel, .info-panel {
             overflow: hidden;
-            border: 1px solid #f0e9e8;
-            border-radius: 26px;
+            border: 1px solid #efe6df;
+            border-radius: 24px;
             background: #fff;
+            box-shadow: 0 12px 32px rgba(79, 45, 37, .07);
         }
-        .image-panel { padding: 14px; }
+        .image-panel {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            background: linear-gradient(145deg, #fff2eb, #fffaf6);
+        }
         .product-image {
             display: block;
             width: 100%;
-            height: 360px;
+            height: clamp(340px, 43vw, 500px);
             border-radius: 17px;
             background: #fff6f4;
             object-fit: cover;
         }
+        .product-image.grade-c-image { object-fit: contain; }
         .origin {
+            position: absolute;
+            left: 28px;
+            bottom: 28px;
             display: inline-block;
-            margin: 13px 0 2px 7px;
-            padding: 7px 13px;
-            border-radius: 20px;
-            background: #e5f2e9;
+            padding: 8px 13px;
+            border: 1px solid rgba(36, 91, 59, .12);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .92);
             color: #245b3b;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: bold;
+            letter-spacing: .5px;
         }
-        .info-panel { padding: 28px; }
-        .product-name { margin: 0 0 11px; color: #245b3b; font-size: 25px; }
-        .rating {
-            margin-bottom: 17px;
-            color: #e9a93a;
-            font-size: 14px;
-            letter-spacing: 2px;
-        }
+        .info-panel { padding: clamp(24px, 3vw, 38px); }
+        .product-name { margin: 0 0 21px; color: #245b3b; font-size: clamp(23px, 2.5vw, 30px); line-height: 1.2; }
         .price-stock {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            margin-bottom: 23px;
+            margin-bottom: 18px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid #f0e9e3;
         }
-        .price { color: #e93658; font-size: 20px; font-weight: bold; }
-        .stock { color: #777; font-size: 14px; }
+        .price { color: #c92547; font-size: 24px; font-weight: bold; letter-spacing: -.4px; }
+        .stock { color: #56665a; font-size: 13px; font-weight: 600; }
         .availability-badge {
             display: inline-block;
-            margin: 0 0 17px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 13px;
+            margin: 0 0 20px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 12px;
             font-weight: bold;
         }
-        .availability-badge.available { background: #e5f2e9; color: #245b3b; }
-        .availability-badge.sold { background: #fde3e8; color: #b42342; }
+        .availability-badge.available { background: #e7f3e8; color: #245b3b; }
+        .availability-badge.sold { background: #fde8eb; color: #b42342; }
         .grade-select {
             width: 100%;
-            min-height: 43px;
-            margin: 0 0 14px;
-            padding: 9px 11px;
-            border: 1px solid #e8e5df;
-            border-radius: 7px;
+            min-height: 48px;
+            margin: 8px 0 19px;
+            padding: 10px 13px;
+            border: 1px solid #e6ddd6;
+            border-radius: 11px;
             background: #fff;
             font: inherit;
         }
-        .description-title, .quantity-title { font-size: 15px; font-weight: bold; }
-        .description-title { margin-bottom: 7px; }
-        .description {
-            min-height: 65px;
-            margin: 0 0 22px;
-            color: #555;
-            font-size: 15px;
-            line-height: 1.7;
+        .grade-select:focus {
+            border-color: #d78a94;
+            outline: 3px solid rgba(233, 54, 88, .1);
         }
-        .weight { margin: -12px 0 17px; color: #777; font-size: 14px; }
+        .description-title, .quantity-title { font-size: 15px; font-weight: bold; }
+        .description-title { margin-bottom: 9px; color: #245b3b; }
+        .description {
+            min-height: 78px;
+            margin: 0 0 22px;
+            padding: 15px 16px;
+            border-left: 3px solid #e8a4ab;
+            border-radius: 0 12px 12px 0;
+            background: #fff8f4;
+            color: #625a54;
+            font-size: 14px;
+            line-height: 1.75;
+        }
+        .weight { margin: -10px 0 18px; color: #777; font-size: 13px; }
         .quantity-title { margin-bottom: 9px; }
         .purchase-row {
             display: grid;
-            grid-template-columns: 118px minmax(0, 1fr);
-            gap: 12px;
+            grid-template-columns: 128px minmax(0, 1fr);
+            gap: 10px;
         }
         .quantity-control {
             min-height: 43px;
             display: grid;
             grid-template-columns: 36px 1fr 36px;
             align-items: center;
-            border-radius: 7px;
-            background: #fde9ed;
+            border: 1px solid #f5dce1;
+            border-radius: 10px;
+            background: #fff3f5;
         }
         .quantity-control button {
             height: 100%;
@@ -177,7 +214,7 @@
         .add-button {
             min-height: 43px;
             border: 0;
-            border-radius: 7px;
+            border-radius: 10px;
             background: #e93658;
             color: #fff;
             font-size: 14px;
@@ -188,18 +225,29 @@
         .add-button:disabled { background: #b9b9b9; cursor: not-allowed; }
         .back-link {
             display: inline-block;
-            margin-top: 22px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #f0f5ef;
             color: #245b3b;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
+            transition: background .2s ease;
         }
-        @media (max-width: 700px) {
-            .navbar { align-items: flex-start; flex-direction: column; }
-            .nav-links { width: 100%; justify-content: space-between; gap: 12px; }
+        .back-link:hover { background: #e5efe4; }
+        @media (max-width: 760px) {
+            main { margin-top: 26px; }
+            .detail-layout { grid-template-columns: 1fr; gap: 16px; }
+            .product-image { height: min(78vw, 420px); min-height: 290px; }
+            .image-panel { padding: 10px; }
+            .origin { left: 22px; bottom: 22px; }
+            .info-panel { padding: 24px; }
+        }
+        @media (max-width: 480px) {
+            .detail-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+            .detail-page-title { margin-bottom: 18px; }
             .detail-layout { grid-template-columns: 1fr; }
-            .product-image { height: 280px; }
-            .info-panel { padding: 22px; }
-            .purchase-row { grid-template-columns: 110px minmax(0, 1fr); gap: 8px; }
+            .price-stock { align-items: flex-start; flex-direction: column; gap: 7px; }
+            .purchase-row { grid-template-columns: 112px minmax(0, 1fr); gap: 8px; }
         }
     </style>
 </head>
@@ -227,7 +275,11 @@
     @include('partials.navigation', ['active' => 'produk'])
 
     <main>
-        <h1>Detail Produk – {{ $produk->nama_produk }}</h1>
+        <div class="detail-heading">
+            <a href="{{ route('produk.index') }}" class="back-link">← Kembali ke produk</a>
+            <span class="detail-eyebrow">{{ $isStrawberryFresh ? 'Stroberi segar dari Ciwidey' : 'Produk pilihan dari Ciwidey' }}</span>
+        </div>
+        <h1 class="detail-page-title">Detail produk</h1>
 
         @if(session('success'))
             <div class="alert" role="status">{{ session('success') }}</div>
@@ -249,8 +301,8 @@
             <section class="image-panel" aria-label="Foto produk">
                 <img
                     src="{{ asset('images/' . $foto) }}"
-                    class="product-image"
-                    alt="{{ $produk->nama_produk }}"
+                    class="product-image {{ ($initialGrade->grade ?? null) === 'C' ? 'grade-c-image' : '' }}"
+                    alt="{{ $produk->nama_produk }}{{ $initialGrade ? ' · Grade '.$initialGrade->grade : '' }}"
                 >
                 <span class="origin">PRODUK CIWIDEY</span>
             </section>
@@ -262,7 +314,6 @@
                         · Grade {{ $initialGrade->grade }}
                     @endif
                 </h2>
-                <div class="rating" aria-label="Rating produk">★★★★★</div>
 
                 @if ($isStrawberryFresh)
                     <div class="price-stock">
@@ -354,7 +405,6 @@
             </section>
         </div>
 
-        <a href="{{ route('produk.index') }}" class="back-link">← Kembali ke Produk</a>
     </main>
 
     <script>

@@ -23,21 +23,45 @@
     </div>
 </aside>
 <style>
-    .operational-hours { margin:18px 0 22px; padding:18px 20px; border:1px solid #dfece2; border-radius:14px; background:linear-gradient(115deg,#f0f7f1,#fff); }
-    .operational-hours-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; }
-    .operational-hours h2 { margin:0; color:#245b3b; font-size:16px; }
-    .operational-hours p { margin:5px 0 0; color:#777; font-size:11px; }
-    .operational-status { flex:none; padding:6px 10px; border-radius:999px; font-size:10px; font-weight:700; }
-    .operational-status.is-open { background:#e2f1e5; color:#245b3b; }
-    .operational-status.is-closed { background:#fff0f2; color:#b42342; }
-    .operational-hours-details { display:flex; flex-wrap:wrap; gap:18px 36px; margin-top:15px; }
-    .operational-hours-details div { display:grid; gap:4px; }
-    .operational-hours-details span { color:#777; font-size:10px; }
-    .operational-hours-details strong { color:#292929; font-size:12px; }
-    .operational-closed-days { color:#777; font-size:10px; }
-    @media(max-width:620px) {
-        .operational-hours { padding:15px; }
-        .operational-hours-heading { align-items:flex-start; flex-direction:column; }
-        .operational-hours-details { gap:12px 20px; }
+    .operational-hours {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+        align-items: center;
+        gap: 24px;
+        margin: 20px 0 24px;
+        padding: 20px 22px;
+        border: 1px solid #dcebe0;
+        border-radius: 20px;
+        background: linear-gradient(115deg, #eff7f0, #fff 78%);
+        box-shadow: 0 9px 24px rgba(36, 91, 59, .045);
+    }
+
+    .operational-hours-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .operational-hours h2 { margin: 0; color: #245b3b; font-size: 18px; }
+    .operational-hours p { margin: 6px 0 0; color: #777; font-size: 12px; }
+    .operational-status { flex: none; padding: 7px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .operational-status.is-open { background: #dff1e3; color: #245b3b; }
+    .operational-status.is-closed { background: #fff0f2; color: #b42342; }
+    .operational-hours-details { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 10px; }
+    .operational-hours-details div { display: grid; align-content: center; gap: 6px; min-height: 67px; padding: 12px 14px; border: 1px solid #e8eee8; border-radius: 13px; background: rgba(255, 255, 255, .82); }
+    .operational-hours-details span { color: #7a807a; font-size: 11px; }
+    .operational-hours-details strong { color: #292929; font-size: 13px; line-height: 1.45; }
+    .operational-closed-days { color: #777; font-size: 11px; }
+
+    @media(max-width: 760px) {
+        .operational-hours { grid-template-columns: 1fr; gap: 15px; }
+    }
+
+    @media(max-width: 480px) {
+        .operational-hours { padding: 17px; }
+        .operational-hours-heading { align-items: flex-start; flex-direction: column; }
+        .operational-hours-details { grid-template-columns: 1fr; }
+        .operational-hours-details div { min-height: auto; }
     }
 </style>

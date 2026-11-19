@@ -1,13 +1,18 @@
 <style>
     .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
         min-height: 84px;
         padding: 12px 5%;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 20px;
-        background: #fffdf8;
-        border-bottom: 1px solid #eee;
+        background: rgba(255, 253, 248, .94);
+        border-bottom: 1px solid #f0e9e3;
+        box-shadow: 0 5px 18px rgba(58, 44, 35, .045);
+        backdrop-filter: blur(12px);
     }
     .site-brand {
         display: flex;
@@ -22,19 +27,31 @@
     .site-brand small { display: block; margin-top: 4px; color: #e93658; }
     .site-nav { display: flex; align-items: center; gap: 28px; }
     .site-nav a {
-        padding: 9px 0;
+        padding: 9px 12px;
+        border-radius: 999px;
         color: #333;
         font-size: 13px;
         text-decoration: none;
+        transition: background .2s ease, color .2s ease;
     }
-    .site-nav a:hover,
-    .site-nav a.is-active { color: #e93658; }
+    .site-nav a:hover { background: #f8f2ec; color: #245b3b; }
+    .site-nav a.is-active { background: #fff0f2; color: #c92547; }
     .site-nav a.is-active { font-weight: bold; }
     .site-nav .site-cart {
-        padding: 9px 13px;
-        border-radius: 6px;
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 13px;
         background: #ffe7ec;
         font-size: 18px;
+    }
+    .site-nav a:focus-visible,
+    .site-brand:focus-visible {
+        outline: 3px solid rgba(36, 91, 59, .35);
+        outline-offset: 3px;
     }
     @media (max-width: 700px) {
         .site-header { flex-wrap: wrap; padding: 12px 5%; }
