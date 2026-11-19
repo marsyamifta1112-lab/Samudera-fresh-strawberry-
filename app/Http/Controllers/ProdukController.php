@@ -95,14 +95,55 @@ class ProdukController extends Controller
             ->pluck('id_produk');
         $gradesByProduct = $freshProductIds->isEmpty()
             ? collect()
-            : DB::table('produk_grade')->whereIn('id_produk', $freshProductIds)->get()->groupBy('id_produk');
+            : DB::table('produk_grade')
+                ->whereIn('id_produk', $freshProductIds)
+                ->orderBy('grade')
+                ->get()
+                ->groupBy('id_produk');
 
-        $produk->each(function (Produk $item) use ($gradesByProduct): void {
+        $catalogProducts = collect();
+        $produk->each(function (Produk $item) use ($gradesByProduct, $filters, $catalogProducts): void {
             $item->is_strawberry_fresh = ProductCatalog::isFreshStrawberry($item->nama_produk);
             $item->grades = $gradesByProduct->get($item->id_produk, collect());
+
+            if ($item->is_strawberry_fresh) {
+                foreach ($item->grades as $grade) {
+                    $price = (float) $grade->harga_per_kg;
+                    if (
+                        (isset($filters['harga_min']) && $price < (float) $filters['harga_min'])
+                        || (isset($filters['harga_max']) && $price > (float) $filters['harga_max'])
+                    ) {
+                        continue;
+                    }
+
+                    $catalogItem = clone $item;
+                    $catalogItem->catalog_grade = $grade->grade;
+                    $catalogItem->catalog_name = 'Stroberi Segar · Grade '.$grade->grade;
+                    $catalogItem->catalog_price = $price;
+                    $catalogItem->catalog_stock = (float) $grade->stok_kg;
+                    $catalogItem->catalog_image = ProductCatalog::gradeImage($grade->grade);
+                    $catalogItem->catalog_available = (bool) ($item->is_available ?? true)
+                        && $catalogItem->catalog_stock > 0;
+                    $catalogProducts->push($catalogItem);
+                }
+
+                return;
+            }
+
+            $item->catalog_grade = null;
+            $item->catalog_name = $item->nama_produk;
+            $item->catalog_price = (float) $item->harga_produk;
+            $item->catalog_stock = (int) $item->stok_produk;
+            $item->catalog_available = (bool) ($item->is_available ?? true)
+                && $item->catalog_stock > 0;
+            $catalogProducts->push($item);
         });
 
-        return view('produk', compact('produk', 'filters', 'operationalSchedule'));
+        return view('produk', [
+            'produk' => $catalogProducts,
+            'filters' => $filters,
+            'operationalSchedule' => $operationalSchedule,
+        ]);
     }
 
     public function show(int $id)

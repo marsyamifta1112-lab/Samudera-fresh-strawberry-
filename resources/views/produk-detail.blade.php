@@ -206,8 +206,14 @@
 <body>
     @php
         $namaProduk = strtolower($produk->nama_produk);
+        $requestedGrade = old('grade', request()->query('grade'));
+        $initialGrade = $isStrawberryFresh
+            ? ($grades->firstWhere('grade', $requestedGrade) ?? $grades->first())
+            : null;
 
-        if ($produk->foto_produk) {
+        if ($initialGrade) {
+            $foto = \App\Support\ProductCatalog::gradeImage($initialGrade->grade);
+        } elseif ($produk->foto_produk) {
             $foto = $produk->foto_produk;
         } elseif (str_contains($namaProduk, 'keripik')) {
             $foto = 'keripik.jpg';
@@ -250,11 +256,15 @@
             </section>
 
             <section class="info-panel">
-                <h2 class="product-name">{{ $produk->nama_produk }}</h2>
+                <h2 class="product-name">
+                    {{ $produk->nama_produk }}
+                    @if ($initialGrade)
+                        · Grade {{ $initialGrade->grade }}
+                    @endif
+                </h2>
                 <div class="rating" aria-label="Rating produk">★★★★★</div>
 
                 @if ($isStrawberryFresh)
-                    @php($initialGrade = $grades->first())
                     <div class="price-stock">
                         <span class="price" id="grade-price">Rp{{ number_format($initialGrade->harga_per_kg ?? 0, 0, ',', '.') }}/kg</span>
                         <span class="stock" id="grade-stock">Stok: {{ number_format($initialGrade->stok_kg ?? 0, 3, ',', '.') }} kg</span>
@@ -294,7 +304,7 @@
                                         data-price="{{ $grade->harga_per_kg }}"
                                         data-stock="{{ $grade->stok_kg }}"
                                         data-image="{{ \App\Support\ProductCatalog::gradeImage($grade->grade) }}"
-                                        @selected(old('grade', $grades->first()->grade) === $grade->grade)
+                                        @selected(old('grade', $initialGrade->grade ?? null) === $grade->grade)
                                     >Grade {{ $grade->grade }} · Rp{{ number_format($grade->harga_per_kg, 0, ',', '.') }}/kg · Stok {{ number_format($grade->stok_kg, 3, ',', '.') }} kg</option>
                                 @endforeach
                             </select>
@@ -317,7 +327,7 @@
                                 name="jumlah"
                                 value="1"
                                 min="1"
-                                max="{{ $isStrawberryFresh ? max(1, (int) ($grades->first()->stok_kg ?? 0)) : max(1, $stokTersedia) }}"
+                                max="{{ $isStrawberryFresh ? max(1, (int) ($initialGrade->stok_kg ?? 0)) : max(1, $stokTersedia) }}"
                                 inputmode="numeric"
                                 aria-label="Jumlah produk"
                                 {{ ! $dapatDipesan ? 'disabled' : '' }}

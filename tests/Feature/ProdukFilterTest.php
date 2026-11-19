@@ -81,15 +81,54 @@ class ProdukFilterTest extends TestCase
         $this->createProduct('Selai Strawberry 200g', 'Selai rumahan dengan rasa segar', 25000, 200);
 
         foreach ([
-            'segar' => 'Strawberry Segar 250g',
-            'keripik' => 'Keripik Strawberry 100g',
-            'selai' => 'Selai Strawberry 200g',
-        ] as $category => $expectedProduct) {
+            'segar' => ['Stroberi Segar · Grade A', '3 produk ditemukan'],
+            'keripik' => ['Keripik Strawberry 100g', '1 produk ditemukan'],
+            'selai' => ['Selai Strawberry 200g', '1 produk ditemukan'],
+        ] as $category => [$expectedProduct, $expectedCount]) {
             $this->get(route('produk.index', ['kategori' => $category]))
                 ->assertOk()
                 ->assertSee($expectedProduct)
-                ->assertSee('1 produk ditemukan');
+                ->assertSee($expectedCount);
         }
+    }
+
+    public function test_catalog_shows_each_strawberry_grade_with_its_own_price_photo_and_cart_grade(): void
+    {
+        $strawberryId = $this->createProduct('Strawberry Segar 250g', 'Buah segar', 20000, 250);
+        $keripikId = $this->createProduct('Keripik Strawberry 100g', 'Keripik renyah', 15000, 100);
+        $selaiId = $this->createProduct('Selai Strawberry 200g', 'Selai rumahan', 25000, 200);
+        $this->createProduct('Paket Hemat Strawberry', 'Paket promo', 30000, 500);
+
+        DB::table('produk')->where('id_produk', $keripikId)
+            ->update(['foto_produk' => 'keripik-strawberry.jpeg']);
+        DB::table('produk')->where('id_produk', $selaiId)
+            ->update(['foto_produk' => 'selai-strawberry.jpeg']);
+
+        $this->get(route('produk.index'))
+            ->assertOk()
+            ->assertSee('Stroberi Segar · Grade A')
+            ->assertSee('Stroberi Segar · Grade B')
+            ->assertSee('Stroberi Segar · Grade C')
+            ->assertSee('Rp80.000')
+            ->assertSee('Rp70.000')
+            ->assertSee('Rp50.000')
+            ->assertSee(asset('images/strawberry.jpeg'))
+            ->assertSee(asset('images/strawberry-grade-b.jpg'))
+            ->assertSee(asset('images/strawberry-grade-c.jpg'))
+            ->assertSee(asset('images/keripik-strawberry.jpeg'))
+            ->assertSee(asset('images/selai-strawberry.jpeg'))
+            ->assertSee(route('produk.show', ['id' => $strawberryId, 'grade' => 'B']))
+            ->assertSee('name="grade" value="A"', false)
+            ->assertSee('name="grade" value="B"', false)
+            ->assertSee('name="grade" value="C"', false)
+            ->assertSee('5 produk ditemukan')
+            ->assertDontSee('Paket Hemat Strawberry');
+
+        $this->get(route('produk.show', ['id' => $strawberryId, 'grade' => 'B']))
+            ->assertOk()
+            ->assertSee('Grade B')
+            ->assertSee('Rp70.000/kg')
+            ->assertSee(asset('images/strawberry-grade-b.jpg'));
     }
 
     public function test_price_and_weight_ranges_filter_independently(): void
@@ -103,10 +142,12 @@ class ProdukFilterTest extends TestCase
             'harga_max' => 80000,
         ]))
             ->assertOk()
-            ->assertSee('Strawberry Segar 250g')
+            ->assertSee('Stroberi Segar · Grade A')
+            ->assertSee('Stroberi Segar · Grade B')
+            ->assertSee('Stroberi Segar · Grade C')
             ->assertDontSee('Selai Strawberry 200g')
             ->assertDontSee('Keripik Strawberry 100g')
-            ->assertSee('1 produk ditemukan');
+            ->assertSee('3 produk ditemukan');
 
         $this->get(route('produk.index', [
             'harga_min' => 20000,
@@ -226,7 +267,7 @@ class ProdukFilterTest extends TestCase
         $this->get(route('produk.index'))
             ->assertOk()
             ->assertSee($photoUrl)
-            ->assertSee('font-size: 16px', false)
+            ->assertSee('font-size: 18px', false)
             ->assertSee('font-size: 14px', false);
 
         $this->get(route('produk.show', $idProduk))
