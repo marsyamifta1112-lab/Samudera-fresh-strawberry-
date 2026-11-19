@@ -471,7 +471,9 @@ class AdminTest extends TestCase
             ->assertOk()
             ->assertSee('Grade A')
             ->assertSee('Grade B')
-            ->assertSee('Grade C');
+            ->assertSee('Grade C')
+            ->assertSee('value="2"', false)
+            ->assertDontSee('value="2.000"', false);
 
         $this->actingAsAdmin()
             ->put(route('admin.inventory.grades.update', 2), [
@@ -485,6 +487,11 @@ class AdminTest extends TestCase
             'harga_per_kg' => 72000,
         ]);
         $this->assertEquals(3.25, DB::table('produk_grade')->where('id_produk_grade', 2)->value('stok_kg'));
+
+        $this->actingAsAdmin()
+            ->get(route('admin.inventory'))
+            ->assertOk()
+            ->assertSee('value="3.25"', false);
     }
 
     public function test_admin_can_verify_payment_assign_courier_and_complete_delivery(): void

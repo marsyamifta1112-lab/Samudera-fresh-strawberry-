@@ -27,7 +27,7 @@
                 <td colspan="3">
                     <form class="inline-form" method="POST" action="{{ route('admin.inventory.grades.update', $grade->id_produk_grade) }}">@csrf @method('PUT')
                         <input aria-label="Harga per kg Grade {{ $grade->grade }}" type="number" name="harga_per_kg" min="0" step="0.01" value="{{ $grade->harga_per_kg }}" required>
-                        <input aria-label="Stok kg Grade {{ $grade->grade }}" type="number" name="stok_kg" min="0" step="0.001" value="{{ $grade->stok_kg }}" required>
+                        <input aria-label="Stok kg Grade {{ $grade->grade }}" type="number" name="stok_kg" min="0" step="0.001" value="{{ \App\Support\ProductCatalog::formatKilogramInput($grade->stok_kg) }}" required>
                         <button class="button button-small" type="submit">Simpan</button>
                     </form>
                 </td>

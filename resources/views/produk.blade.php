@@ -736,7 +736,7 @@
                                     Rp{{ number_format($item->catalog_price, 0, ',', '.') }}<span>/kg</span>
                                 </div>
                                 <p class="product-weight">
-                                    Stok: {{ number_format($item->catalog_stock, 3, ',', '.') }} kg
+                                    Stok: {{ \App\Support\ProductCatalog::formatKilogramStock($item->catalog_stock) }} kg
                                 </p>
                             @else
                                 <div class="product-price">

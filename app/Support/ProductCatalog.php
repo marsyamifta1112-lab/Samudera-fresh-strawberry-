@@ -35,4 +35,14 @@ class ProductCatalog
             default => 'strawberry.jpeg',
         };
     }
+
+    public static function formatKilogramStock(float|int|string|null $stock): string
+    {
+        return rtrim(rtrim(number_format((float) $stock, 3, ',', '.'), '0'), ',');
+    }
+
+    public static function formatKilogramInput(float|int|string|null $stock): string
+    {
+        return rtrim(rtrim(number_format((float) $stock, 3, '.', ''), '0'), '.');
+    }
 }

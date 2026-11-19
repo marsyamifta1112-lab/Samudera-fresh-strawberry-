@@ -267,7 +267,7 @@
                 @if ($isStrawberryFresh)
                     <div class="price-stock">
                         <span class="price" id="grade-price">Rp{{ number_format($initialGrade->harga_per_kg ?? 0, 0, ',', '.') }}/kg</span>
-                        <span class="stock" id="grade-stock">Stok: {{ number_format($initialGrade->stok_kg ?? 0, 3, ',', '.') }} kg</span>
+                        <span class="stock" id="grade-stock">Stok: {{ \App\Support\ProductCatalog::formatKilogramStock($initialGrade->stok_kg ?? 0) }} kg</span>
                     </div>
                 @else
                     <div class="price-stock">
@@ -305,7 +305,7 @@
                                         data-stock="{{ $grade->stok_kg }}"
                                         data-image="{{ \App\Support\ProductCatalog::gradeImage($grade->grade) }}"
                                         @selected(old('grade', $initialGrade->grade ?? null) === $grade->grade)
-                                    >Grade {{ $grade->grade }} · Rp{{ number_format($grade->harga_per_kg, 0, ',', '.') }}/kg · Stok {{ number_format($grade->stok_kg, 3, ',', '.') }} kg</option>
+                                    >Grade {{ $grade->grade }} · Rp{{ number_format($grade->harga_per_kg, 0, ',', '.') }}/kg · Stok {{ \App\Support\ProductCatalog::formatKilogramStock($grade->stok_kg) }} kg</option>
                                 @endforeach
                             </select>
                         @else

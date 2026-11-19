@@ -112,6 +112,7 @@ class ProdukFilterTest extends TestCase
             ->assertSee('Rp80.000')
             ->assertSee('Rp70.000')
             ->assertSee('Rp50.000')
+            ->assertSee('Stok: 10 kg')
             ->assertSee(asset('images/strawberry.jpeg'))
             ->assertSee(asset('images/strawberry-grade-b.jpg'))
             ->assertSee(asset('images/strawberry-grade-c.jpg'))
@@ -128,6 +129,7 @@ class ProdukFilterTest extends TestCase
             ->assertOk()
             ->assertSee('Grade B')
             ->assertSee('Rp70.000/kg')
+            ->assertSee('Stok: 10 kg')
             ->assertSee(asset('images/strawberry-grade-b.jpg'));
     }
 
