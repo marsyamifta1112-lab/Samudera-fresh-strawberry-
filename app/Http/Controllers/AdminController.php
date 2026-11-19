@@ -1402,6 +1402,7 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
         .'<sheetData>'.implode('', $worksheetRows).'</sheetData>'
         .'<autoFilter ref="A7:J'.$lastRow.'"/>'
         .'<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'
+        .($hasLogo ? '<drawing r:id="rId1"/>' : '')
         .'</worksheet>';
 
     $files = [
@@ -1410,9 +1411,11 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
             .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
             .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             .'<Default Extension="xml" ContentType="application/xml"/>'
+            .($hasLogo ? '<Default Extension="jpg" ContentType="image/jpeg"/>' : '')
             .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            .($hasLogo ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : '')
             .'</Types>',
 
         '_rels/.rels' =>
