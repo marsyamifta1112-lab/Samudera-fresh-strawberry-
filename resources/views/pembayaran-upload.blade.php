@@ -81,6 +81,10 @@
         <section class="panel">
             <h2>Upload Bukti Pembayaran</h2>
             <p class="order">Pesanan #{{ $pesanan->id_pesanan }} &bull; Rp{{ number_format($pesanan->total_harga, 0, ',', '.') }}</p>
+            <p class="order">
+                Transfer dari {{ $pembayaran->metode_pembayaran ?: 'bank yang dipilih' }} atas nama
+                {{ $pembayaran->nama_pemilik_rekening_pengirim }} · rekening {{ $pembayaran->nomor_rekening_pengirim }}
+            </p>
 
             @if ($errors->any())
                 <div class="alert error" role="alert">

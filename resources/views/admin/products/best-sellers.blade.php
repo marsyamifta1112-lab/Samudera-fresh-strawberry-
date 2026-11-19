@@ -8,9 +8,9 @@
     <section class="product-list">
         @forelse ($produkTerlaris as $item)
             <a class="product-row" href="{{ route('admin.products.edit', $item->id_produk) }}">
-                @if ($item->foto_produk)<img class="product-thumb" src="{{ asset('images/'.$item->foto_produk) }}" alt="{{ $item->nama_produk }}">@else<img class="product-thumb" src="{{ asset('images/strawberry.jpeg') }}" alt="">@endif
-                <span class="product-info"><strong>{{ $item->nama_produk }}</strong><small>Produk terlaris</small></span>
-                <span class="row-action">{{ number_format($item->total_terjual) }} pcs terjual</span>
+                @if ($item->foto_produk)<img class="product-thumb" src="{{ asset('images/'.($item->grade ? \App\Support\ProductCatalog::gradeImage($item->grade) : $item->foto_produk)) }}" alt="{{ $item->nama_produk }}">@else<img class="product-thumb" src="{{ asset('images/strawberry.jpeg') }}" alt="">@endif
+                <span class="product-info"><strong>{{ $item->nama_produk }}{{ $item->grade ? ' · Grade '.$item->grade : '' }}</strong><small>Produk terlaris</small></span>
+                <span class="row-action">{{ number_format($item->total_terjual) }} {{ $item->grade ? 'kg' : ($item->berat_gram ? 'kemasan' : 'pcs') }} terjual</span>
             </a>
         @empty
             <div class="panel empty">Belum ada data penjualan produk.</div>

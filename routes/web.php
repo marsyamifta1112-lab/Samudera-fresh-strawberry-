@@ -86,6 +86,7 @@ Route::middleware('role:Admin')->prefix('admin')->name('admin.')->group(function
 
     Route::get('/inventory', [AdminController::class, 'inventory'])->name('inventory');
     Route::put('/inventory/{id}', [AdminController::class, 'updateInventory'])->name('inventory.update');
+    Route::put('/inventory/grades/{id}', [AdminController::class, 'updateGradeInventory'])->name('inventory.grades.update');
     Route::get('/orders', [AdminController::class, 'orders'])->name('orders');
     Route::get('/shipping-rates', [AdminController::class, 'shippingRates'])->name('shipping-rates');
     Route::put('/shipping-rates', [AdminController::class, 'updateShippingRates'])->name('shipping-rates.update');

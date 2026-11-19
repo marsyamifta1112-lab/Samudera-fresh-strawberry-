@@ -1,21 +1,46 @@
 <?php
 
 use App\Support\OrderMetadata;
+use App\Support\ProductCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/produk', function () {
     $produk = DB::table('produk')
+        ->whereRaw('LOWER(nama_produk) NOT LIKE ?', ['%paket hemat%'])
         ->select(
             'id_produk',
             'nama_produk',
             'deskripsi',
             'harga_produk',
             'stok_produk',
-            'foto_produk'
+            'foto_produk',
+            'berat_gram'
         )
-        ->get();
+        ->get()
+        ->map(function (object $item): object {
+            $item->grades = collect();
+            $item->satuan = $item->berat_gram ? 'paket' : 'pcs';
+
+            if (ProductCatalog::isFreshStrawberry($item->nama_produk)) {
+                $item->harga_produk = null;
+                $item->stok_produk = null;
+                $item->foto_produk = ProductCatalog::gradeImage('A');
+                $item->satuan = 'kg';
+                $item->grades = DB::table('produk_grade')
+                    ->where('id_produk', $item->id_produk)
+                    ->orderBy('grade')
+                    ->get()
+                    ->map(function (object $grade): object {
+                        $grade->foto_produk = ProductCatalog::gradeImage($grade->grade);
+
+                        return $grade;
+                    });
+            }
+
+            return $item;
+        });
 
     return response()->json([
         'success' => true,
@@ -29,12 +54,31 @@ Route::get('/produk/{id}', function ($id) {
         ->where('id_produk', $id)
         ->first();
 
-    if (! $produk) {
+    if (! $produk || ProductCatalog::isHematPackage($produk->nama_produk)) {
         return response()->json([
             'success' => false,
             'message' => 'Produk tidak ditemukan.',
             'data' => null,
         ], 404);
+    }
+
+    $produk->satuan = $produk->berat_gram ? 'paket' : 'pcs';
+    $produk->grades = collect();
+
+    if (ProductCatalog::isFreshStrawberry($produk->nama_produk)) {
+        $produk->harga_produk = null;
+        $produk->stok_produk = null;
+        $produk->foto_produk = ProductCatalog::gradeImage('A');
+        $produk->satuan = 'kg';
+        $produk->grades = DB::table('produk_grade')
+            ->where('id_produk', $produk->id_produk)
+            ->orderBy('grade')
+            ->get()
+            ->map(function (object $grade): object {
+                $grade->foto_produk = ProductCatalog::gradeImage($grade->grade);
+
+                return $grade;
+            });
     }
 
     return response()->json([
@@ -104,7 +148,10 @@ Route::get('/pesanan/{id}', function ($id) {
             'produk.nama_produk',
             'detail_pesanan.jumlah',
             'detail_pesanan.harga',
-            'detail_pesanan.subtotal'
+            'detail_pesanan.subtotal',
+            'detail_pesanan.grade',
+            'detail_pesanan.satuan',
+            'detail_pesanan.berat_gram'
         )
         ->get();
 

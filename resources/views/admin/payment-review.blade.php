@@ -10,6 +10,8 @@
             <div><div class="detail-label">Ongkir</div><div class="detail-value">{{ $pesanan->ongkir === null ? 'Menunggu Admin' : 'Rp'.number_format($pesanan->ongkir, 0, ',', '.') }}</div></div>
             <div><div class="detail-label">Total</div><div class="payment-total">{{ $pesanan->ongkir === null ? 'Menunggu ongkir' : 'Rp'.number_format($pesanan->total_harga, 0, ',', '.') }}</div></div>
             <div><div class="detail-label">Metode Pembayaran</div><div class="detail-value">{{ $pesanan->metode_pembayaran ?? '-' }} · {{ $pesanan->nama_pelanggan }}</div></div>
+            <div><div class="detail-label">Nama Pemilik Rekening Pengirim</div><div class="detail-value">{{ $pesanan->nama_pemilik_rekening_pengirim ?: '-' }}</div></div>
+            <div><div class="detail-label">Nomor Rekening Pengirim</div><div class="detail-value">{{ $pesanan->nomor_rekening_pengirim ?: '-' }}</div></div>
             <div><div class="detail-label">Status</div><span class="status status-{{ $pesanan->status_pembayaran }}">{{ ucfirst($pesanan->status_pembayaran) }}</span></div>
             <div><div class="detail-label">Bukti Pembayaran</div>
                 @if ($pesanan->bukti_pembayaran)

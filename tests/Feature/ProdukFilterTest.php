@@ -40,6 +40,13 @@ class ProdukFilterTest extends TestCase
             'hari_operasional' => json_encode([1, 2, 3, 4, 5, 6]),
             'tanggal_libur' => json_encode([]),
         ]);
+        Schema::create('produk_grade', function (Blueprint $table) {
+            $table->increments('id_produk_grade');
+            $table->unsignedBigInteger('id_produk');
+            $table->char('grade', 1);
+            $table->decimal('harga_per_kg', 12, 2);
+            $table->decimal('stok_kg', 12, 3)->default(0);
+        });
 
     }
 
@@ -92,14 +99,24 @@ class ProdukFilterTest extends TestCase
         $this->createProduct('Selai Strawberry 200g', 'Selai rumahan', 25000, 200);
 
         $this->get(route('produk.index', [
+            'harga_min' => 50000,
+            'harga_max' => 80000,
+        ]))
+            ->assertOk()
+            ->assertSee('Strawberry Segar 250g')
+            ->assertDontSee('Selai Strawberry 200g')
+            ->assertDontSee('Keripik Strawberry 100g')
+            ->assertSee('1 produk ditemukan');
+
+        $this->get(route('produk.index', [
             'harga_min' => 20000,
             'harga_max' => 25000,
         ]))
             ->assertOk()
-            ->assertSee('Strawberry Segar 250g')
+            ->assertDontSee('Strawberry Segar 250g')
             ->assertSee('Selai Strawberry 200g')
             ->assertDontSee('Keripik Strawberry 100g')
-            ->assertSee('2 produk ditemukan');
+            ->assertSee('1 produk ditemukan');
 
         $this->get(route('produk.index', [
             'berat_min' => 100,
@@ -124,6 +141,37 @@ class ProdukFilterTest extends TestCase
             ->assertSee('1 produk ditemukan');
     }
 
+    public function test_hemat_package_is_hidden_from_catalog_and_product_detail(): void
+    {
+        $id = $this->createProduct('Paket Hemat Strawberry', 'Paket promo', 30000, 500);
+
+        $this->get(route('produk.index'))
+            ->assertOk()
+            ->assertDontSee('Paket Hemat Strawberry');
+
+        $this->get(route('produk.show', $id))->assertNotFound();
+    }
+
+    public function test_product_api_hides_hemat_packages_and_returns_strawberry_grades(): void
+    {
+        $freshId = $this->createProduct('Strawberry Segar', 'Buah segar', 20000, 250);
+        $packageId = $this->createProduct('Paket Hemat Strawberry', 'Paket promo', 30000, 500);
+
+        $listResponse = $this->getJson('/api/produk')
+            ->assertOk()
+            ->assertJsonMissing(['nama_produk' => 'Paket Hemat Strawberry']);
+        $this->assertEquals(80000, $listResponse->json('data.0.grades.0.harga_per_kg'));
+
+        $this->getJson('/api/produk/'.$freshId)
+            ->assertOk()
+            ->assertJsonPath('data.satuan', 'kg')
+            ->assertJsonPath('data.harga_produk', null)
+            ->assertJsonPath('data.grades.0.grade', 'A')
+            ->assertJsonPath('data.grades.0.foto_produk', 'strawberry.jpeg');
+
+        $this->getJson('/api/produk/'.$packageId)->assertNotFound();
+    }
+
     public function test_invalid_price_and_weight_ranges_are_rejected(): void
     {
         $this->get(route('produk.index', [
@@ -138,7 +186,7 @@ class ProdukFilterTest extends TestCase
 
     public function test_product_detail_adds_selected_quantity_to_session_cart(): void
     {
-        $idProduk = $this->createProduct('Strawberry Segar 250g', 'Buah segar', 20000, 250);
+        $idProduk = $this->createProduct('Selai Strawberry 250g', 'Buah segar', 20000, 250);
         $session = [
             'id_pelanggan' => 7,
             'role' => 'Pelanggan',
@@ -163,7 +211,7 @@ class ProdukFilterTest extends TestCase
         $this->withSession($session)
             ->get(route('keranjang.index'))
             ->assertOk()
-            ->assertSee('Strawberry Segar 250g');
+            ->assertSee('Selai Strawberry 250g');
     }
 
     public function test_product_catalog_and_detail_use_the_uploaded_photo_and_medium_text_sizes(): void
@@ -232,7 +280,7 @@ class ProdukFilterTest extends TestCase
 
     private function createProduct(string $name, string $description, int $price, int $weight): int
     {
-        return DB::table('produk')->insertGetId([
+        $id = DB::table('produk')->insertGetId([
             'nama_produk' => $name,
             'deskripsi' => $description,
             'harga_produk' => $price,
@@ -240,5 +288,18 @@ class ProdukFilterTest extends TestCase
             'foto_produk' => null,
             'berat_gram' => $weight,
         ], 'id_produk');
+
+        if (\App\Support\ProductCatalog::isFreshStrawberry($name)) {
+            foreach (\App\Support\ProductCatalog::GRADE_PRICES as $grade => $gradePrice) {
+                DB::table('produk_grade')->insert([
+                    'id_produk' => $id,
+                    'grade' => $grade,
+                    'harga_per_kg' => $gradePrice,
+                    'stok_kg' => 10,
+                ]);
+            }
+        }
+
+        return $id;
     }
 }

@@ -232,16 +232,24 @@
                     <tr>
                         <td>
                             <div class="item-name">
-                                {{ $item->nama_produk ?? 'Produk tidak tersedia' }}
+                                {{ $item->nama_produk ?? 'Produk tidak tersedia' }}{{ $item->grade ? ' · Grade '.$item->grade : '' }}
                             </div>
 
                             <div class="muted">
-                                Rp{{ number_format($item->harga, 0, ',', '.') }} / produk
+                                @if ($item->grade)
+                                    {{ $item->jumlah }} kg × Rp{{ number_format($item->harga, 0, ',', '.') }}/kg
+                                @else
+                                    {{ $item->jumlah }} {{ $item->berat_gram ? 'kemasan' : 'pcs' }}{{ $item->berat_gram ? ' · '.$item->berat_gram.' gram/kemasan' : '' }} × Rp{{ number_format($item->harga, 0, ',', '.') }}/{{ $item->berat_gram ? 'kemasan' : 'pcs' }}
+                                @endif
                             </div>
                         </td>
 
                         <td class="quantity">
-                            {{ $item->jumlah }}
+                            @if ($item->grade)
+                                {{ $item->jumlah }} kg
+                            @else
+                                {{ $item->jumlah }} {{ $item->berat_gram ? 'kemasan' : 'pcs' }}
+                            @endif
                         </td>
 
                         <td class="amount">

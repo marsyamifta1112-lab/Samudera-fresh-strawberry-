@@ -29,18 +29,29 @@
                             </td>
                             <td>
                                 {{ $item->nama_produk ?: 'Produk tidak tersedia' }}
-                                <div>Jumlah: {{ $item->jumlah }}</div>
+                                @if ($item->grade)
+                                    <div>Grade {{ $item->grade }} · {{ $item->jumlah }} kg</div>
+                                @else
+                                    <div>Jumlah: {{ $item->jumlah }}</div>
+                                @endif
                                 <div>Nilai: Rp{{ number_format($item->jumlah_pengembalian, 0, ',', '.') }}</div>
                             </td>
                             <td>
                                 <div>{{ $item->status_return }}</div>
                                 <div>{{ $item->alasan }}</div>
-                                <div><a href="{{ route('admin.returns.proof', [$item->id_pesanan, $item->id_return]) }}">Lihat foto bukti</a></div>
                                 @if ($item->catatan_admin)
                                     <div>Catatan: {{ $item->catatan_admin }}</div>
                                 @endif
                             </td>
                             <td>
+                                @php($proofUrl = route('admin.returns.proof', [$item->id_pesanan, $item->id_return]))
+                                @if ($item->jenis_bukti === 'video')
+                                    <video class="return-proof-preview" controls preload="metadata" src="{{ $proofUrl }}">Browser Anda tidak mendukung pemutaran video.</video>
+                                    <a href="{{ $proofUrl }}" target="_blank" rel="noopener">Buka video bukti</a>
+                                @else
+                                    <img class="return-proof-preview" src="{{ $proofUrl }}" alt="Bukti return produk">
+                                    <a href="{{ $proofUrl }}" target="_blank" rel="noopener">Buka foto bukti</a>
+                                @endif
                                 <div>{{ $item->bank_pengembalian }}</div>
                                 <div>{{ $item->nama_pemilik_rekening }}</div>
                                 <div>{{ $item->nomor_rekening }}</div>

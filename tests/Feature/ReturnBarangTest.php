@@ -28,6 +28,14 @@ class ReturnBarangTest extends TestCase
             $table->string('foto_produk')->nullable();
         });
 
+        Schema::create('produk_grade', function (Blueprint $table) {
+            $table->increments('id_produk_grade');
+            $table->integer('id_produk');
+            $table->char('grade', 1);
+            $table->decimal('harga_per_kg', 12, 2);
+            $table->decimal('stok_kg', 12, 3)->default(0);
+        });
+
         Schema::create('pesanan', function (Blueprint $table) {
             $table->increments('id_pesanan');
             $table->integer('id_pelanggan');
@@ -48,6 +56,9 @@ class ReturnBarangTest extends TestCase
             $table->integer('jumlah');
             $table->decimal('harga', 12, 2);
             $table->decimal('subtotal', 12, 2);
+            $table->char('grade', 1)->nullable();
+            $table->string('satuan', 12)->nullable();
+            $table->unsignedInteger('berat_gram')->nullable();
         });
 
         Schema::create('pembayaran', function (Blueprint $table) {
@@ -196,6 +207,77 @@ class ReturnBarangTest extends TestCase
             ->put(route('admin.returns.refund', [1, $returnId]), ['aksi' => 'selesai_transfer'])
             ->assertStatus(409);
         $this->assertDatabaseHas('produk', ['id_produk' => 1, 'stok_produk' => 6]);
+    }
+
+    public function test_grade_return_restocks_the_matching_grade_instead_of_product_stock(): void
+    {
+        Storage::fake('local');
+        DB::table('produk_grade')->insert([
+            'id_produk_grade' => 1,
+            'id_produk' => 1,
+            'grade' => 'B',
+            'harga_per_kg' => 70000,
+            'stok_kg' => 2,
+        ]);
+        DB::table('detail_pesanan')->insert([
+            'id_detail' => 2,
+            'id_pesanan' => 1,
+            'id_produk' => 1,
+            'jumlah' => 2,
+            'harga' => 70000,
+            'subtotal' => 140000,
+            'grade' => 'B',
+            'satuan' => 'kg',
+        ]);
+
+        $this->customer()
+            ->post(route('pesanan.return.store', 1), array_merge($this->returnPayload(1), [
+                'id_detail' => 2,
+            ]))
+            ->assertRedirect(route('pesanan.show', 1));
+
+        $this->admin()
+            ->put(route('admin.returns.review', [1, 1]), ['keputusan' => 'setujui'])
+            ->assertRedirect(route('admin.returns'));
+        $this->admin()
+            ->put(route('admin.returns.status', [1, 1]), ['status_return' => 'Barang Diterima'])
+            ->assertRedirect(route('admin.returns'));
+        $this->admin()
+            ->put(route('admin.returns.status', [1, 1]), ['status_return' => 'Layak Dijual'])
+            ->assertRedirect(route('admin.returns'));
+
+        $this->assertDatabaseHas('produk_grade', [
+            'id_produk' => 1,
+            'grade' => 'B',
+            'stok_kg' => 3,
+        ]);
+        $this->assertDatabaseHas('produk', ['id_produk' => 1, 'stok_produk' => 5]);
+    }
+
+    public function test_customer_can_submit_video_return_proof_and_admin_sees_it_inline(): void
+    {
+        Storage::fake('local');
+        $payload = $this->returnPayload(1);
+        $payload['foto_bukti'] = UploadedFile::fake()->create('bukti.mp4', 100, 'video/mp4');
+
+        $this->customer()
+            ->post(route('pesanan.return.store', 1), $payload)
+            ->assertRedirect(route('pesanan.show', 1))
+            ->assertSessionHasNoErrors();
+
+        $return = $this->returnRecord(1);
+        Storage::disk('local')->assertExists($return['foto_bukti']);
+
+        $this->customer()
+            ->get(route('pesanan.show', 1))
+            ->assertOk()
+            ->assertSee('<video', false);
+
+        $this->admin()
+            ->get(route('admin.returns'))
+            ->assertOk()
+            ->assertSee('<video', false)
+            ->assertSee(route('admin.returns.proof', [1, 1]));
     }
 
     public function test_customer_cannot_access_another_customers_return_proof_and_admin_role_is_required(): void

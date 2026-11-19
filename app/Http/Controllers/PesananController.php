@@ -71,6 +71,9 @@ class PesananController extends Controller
                 'dp.jumlah',
                 'dp.harga',
                 'dp.subtotal',
+                'dp.grade',
+                'dp.satuan',
+                'dp.berat_gram',
                 'pr.nama_produk',
                 'pr.foto_produk'
             )

@@ -44,6 +44,15 @@
         .progress-line{height:1px;flex:1;min-width:14px;background:#e8cbd1;margin:0 8px}
         .detail-actions{display:flex;justify-content:flex-end}.confirmation{min-height:255px;display:flex;align-items:center;justify-content:center;text-align:center}.confirmation-check{font-size:38px;color:var(--berry);line-height:1}.confirmation h3{margin:9px 0;color:var(--forest);font-size:17px}.confirmation strong{font-size:10px}.confirmation p{margin:22px 0 18px;color:var(--muted);font-size:10px}
         .pagination{margin-top:12px;font-size:11px}
+        .pagination nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .pagination nav>div:first-child{display:none}
+        .pagination nav>div:last-child{display:flex;flex:1;align-items:center;justify-content:space-between;gap:12px}
+        .pagination nav a,.pagination nav [aria-disabled] span,.pagination nav [aria-current] span{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;padding:6px 10px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:11px}
+        .pagination nav a:hover{background:#faf8f2;color:var(--forest)}
+        .pagination nav [aria-current] span{background:var(--forest);color:#fff}
+        .pagination nav [aria-disabled] span{background:#faf8f2;color:var(--muted)}
+        .pagination nav svg{display:block;width:16px;height:16px}
+        .pagination nav p{margin:0;color:var(--muted)}
         @media(max-width:900px){.admin-shell{grid-template-columns:200px minmax(0,1fr)}.content{padding:14px 18px 32px}}
         @media(max-width:620px){.admin-shell{display:block}.sidebar{min-height:0;padding:10px;gap:8px}.brand{margin:0 0 8px}.nav-list{display:flex}.nav-list a{white-space:nowrap;padding:8px}.side-bottom{display:none}.topbar{height:34px;padding:0 14px}.content{padding:10px 12px 25px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.page-heading h2{font-size:17px}.panel{padding:13px}.detail-card{padding:16px}.progress{overflow-x:auto;padding-bottom:7px}.shipment-row{align-items:flex-start;flex-wrap:wrap}.shipment-row .button{margin-left:auto}.form-grid,.detail-grid{grid-template-columns:1fr}}
     </style>

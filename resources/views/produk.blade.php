@@ -580,7 +580,11 @@
                         }
 
                         $isPaket = str_contains($nama, 'paket');
-                        $isAvailable = (bool) ($item->is_available ?? true) && (int) $item->stok_produk > 0;
+                        $isFresh = (bool) ($item->is_strawberry_fresh ?? false);
+                        $hasStock = $isFresh
+                            ? $item->grades->contains(fn ($grade) => (float) $grade->stok_kg > 0)
+                            : (int) $item->stok_produk > 0;
+                        $isAvailable = (bool) ($item->is_available ?? true) && $hasStock;
                     @endphp
 
                     <div class="product-card {{ $isPaket ? 'package-card' : '' }}">
@@ -593,33 +597,48 @@
                         <div class="product-info">
                             <h3 class="product-name">{{ $item->nama_produk }}</h3>
 
-                            <div class="product-price">
-                                Rp{{ number_format($item->harga_produk, 0, ',', '.') }}
-                            </div>
+                            @if ($item->is_strawberry_fresh)
+                                <div class="product-price">Harga stroberi segar per kg</div>
+                                @foreach ($item->grades as $grade)
+                                    <p class="product-weight">
+                                        Grade {{ $grade->grade }} · Rp{{ number_format($grade->harga_per_kg, 0, ',', '.') }}/kg
+                                    </p>
+                                @endforeach
+                                <span class="availability-badge {{ $isAvailable ? 'available' : 'sold' }}">
+                                    {{ $isAvailable ? 'Tersedia' : 'Habis' }}
+                                </span>
+                                <div class="product-actions">
+                                    <a href="{{ route('produk.show', $item->id_produk) }}" class="detail-link">Pilih Grade</a>
+                                </div>
+                            @else
+                                <div class="product-price">
+                                    Rp{{ number_format($item->harga_produk, 0, ',', '.') }}/{{ $item->berat_gram ? 'kemasan' : 'pcs' }}
+                                </div>
 
-                            <span class="availability-badge {{ $isAvailable ? 'available' : 'sold' }}">
-                                {{ $isAvailable ? 'Tersedia' : 'Habis' }}
-                            </span>
+                                <span class="availability-badge {{ $isAvailable ? 'available' : 'sold' }}">
+                                    {{ $isAvailable ? 'Tersedia' : 'Habis' }}
+                                </span>
 
-                            @if($item->berat_gram)
-                                <p class="product-weight">{{ number_format($item->berat_gram, 0, ',', '.') }} gram</p>
+                                @if($item->berat_gram)
+                                    <p class="product-weight">{{ number_format($item->berat_gram, 0, ',', '.') }} gram per kemasan</p>
+                                @endif
+
+                                <div class="product-actions">
+                                    <a href="{{ route('produk.show', $item->id_produk) }}" class="detail-link">
+                                        Detail
+                                    </a>
+                                    <form
+                                        action="{{ route('keranjang.tambah', $item->id_produk) }}"
+                                        method="POST"
+                                    >
+                                        @csrf
+                                        <input type="hidden" name="jumlah" value="1">
+                                        <button type="submit" class="btn-product" {{ $isAvailable ? '' : 'disabled' }}>
+                                            {{ $isAvailable ? 'Tambah' : 'Habis' }}
+                                        </button>
+                                    </form>
+                                </div>
                             @endif
-
-                            <div class="product-actions">
-                                <a href="{{ route('produk.show', $item->id_produk) }}" class="detail-link">
-                                    Detail
-                                </a>
-                                <form
-                                    action="{{ route('keranjang.tambah', $item->id_produk) }}"
-                                    method="POST"
-                                >
-                                    @csrf
-                                    <input type="hidden" name="jumlah" value="1">
-                                    <button type="submit" class="btn-product" {{ $isAvailable ? '' : 'disabled' }}>
-                                        {{ $isAvailable ? 'Tambah' : 'Habis' }}
-                                    </button>
-                                </form>
-                            </div>
                         </div>
                     </div>
                 @endforeach

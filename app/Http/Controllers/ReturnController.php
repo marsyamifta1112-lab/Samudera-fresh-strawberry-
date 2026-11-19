@@ -13,11 +13,15 @@ class ReturnController extends Controller
 {
     public function store(Request $request, int $orderId)
     {
+        $proof = $request->file('foto_bukti');
+        $videoExtensions = ['mp4', 'mov', 'webm'];
+        $maxProofSize = $proof && in_array($proof->guessExtension(), $videoExtensions, true) ? 51200 : 5120;
+
         $data = $request->validate([
             'id_detail' => 'required|integer|min:1',
             'jumlah' => 'required|integer|min:1',
             'alasan' => 'required|string|min:10|max:2000',
-            'foto_bukti' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'foto_bukti' => "required|file|mimes:jpg,jpeg,png,webp,mp4,mov,webm|max:{$maxProofSize}",
             'bank_pengembalian' => 'required|in:BCA,BRI,BNI,Mandiri',
             'nama_pemilik_rekening' => 'required|string|max:100',
             'nomor_rekening' => ['required', 'string', 'max:34', 'regex:/^[0-9]+$/'],
@@ -92,6 +96,8 @@ class ReturnController extends Controller
                     'id_produk' => $detail->id_produk,
                     'jumlah' => $data['jumlah'],
                     'jumlah_pengembalian' => number_format((float) $detail->harga * $data['jumlah'], 2, '.', ''),
+                    'grade' => $detail->grade,
+                    'satuan' => $detail->satuan,
                     'alasan' => $data['alasan'],
                     'foto_bukti' => $proofPath,
                     'bank_pengembalian' => $data['bank_pengembalian'],
@@ -136,6 +142,10 @@ class ReturnController extends Controller
                         $return['nama_produk'] = DB::table('produk')
                             ->where('id_produk', $return['id_produk'])
                             ->value('nama_produk');
+                        $proofExtension = strtolower(pathinfo($return['foto_bukti'] ?? '', PATHINFO_EXTENSION));
+                        $return['jenis_bukti'] = in_array($proofExtension, ['mp4', 'mov', 'webm'], true)
+                            ? 'video'
+                            : 'image';
 
                         return (object) $return;
                     })
@@ -201,19 +211,39 @@ class ReturnController extends Controller
 
             if ($data['status_return'] === 'Layak Dijual') {
                 abort_if($return['stok_dikembalikan_at'] !== null, 409, 'Stok untuk return ini sudah dikembalikan.');
-                $product = DB::table('produk')->where('id_produk', $return['id_produk'])->lockForUpdate()->first();
-                abort_if(! $product || $product->stok_produk === null, 409, 'Stok produk tidak tersedia untuk diperbarui.');
+                if (! empty($return['grade'])) {
+                    $grade = DB::table('produk_grade')
+                        ->where('id_produk', $return['id_produk'])
+                        ->where('grade', $return['grade'])
+                        ->lockForUpdate()
+                        ->first();
+                    abort_if(! $grade, 409, 'Grade produk tidak tersedia untuk memperbarui stok.');
 
-                if ((int) $product->stok_produk + (int) $return['jumlah'] > 2147483647) {
-                    throw ValidationException::withMessages([
-                        'status_return' => 'Jumlah stok setelah return melebihi batas database.',
-                    ]);
+                    if ((float) $grade->stok_kg + (int) $return['jumlah'] > 999999999.999) {
+                        throw ValidationException::withMessages([
+                            'status_return' => 'Jumlah stok setelah return melebihi batas database.',
+                        ]);
+                    }
+
+                    DB::table('produk_grade')
+                        ->where('id_produk_grade', $grade->id_produk_grade)
+                        ->increment('stok_kg', (int) $return['jumlah']);
+                    $return['stok_dikembalikan_at'] = now()->toDateTimeString();
+                } else {
+                    $product = DB::table('produk')->where('id_produk', $return['id_produk'])->lockForUpdate()->first();
+                    abort_if(! $product || $product->stok_produk === null, 409, 'Stok produk tidak tersedia untuk diperbarui.');
+
+                    if ((int) $product->stok_produk + (int) $return['jumlah'] > 2147483647) {
+                        throw ValidationException::withMessages([
+                            'status_return' => 'Jumlah stok setelah return melebihi batas database.',
+                        ]);
+                    }
+
+                    DB::table('produk')
+                        ->where('id_produk', $return['id_produk'])
+                        ->increment('stok_produk', (int) $return['jumlah']);
+                    $return['stok_dikembalikan_at'] = now()->toDateTimeString();
                 }
-
-                DB::table('produk')
-                    ->where('id_produk', $return['id_produk'])
-                    ->increment('stok_produk', (int) $return['jumlah']);
-                $return['stok_dikembalikan_at'] = now()->toDateTimeString();
             }
 
             $return['status_return'] = $data['status_return'];

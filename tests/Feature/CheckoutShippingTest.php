@@ -19,6 +19,15 @@ class CheckoutShippingTest extends TestCase
             $table->string('foto_produk')->nullable();
             $table->decimal('harga_produk', 12, 2);
             $table->integer('stok_produk');
+            $table->unsignedInteger('berat_gram')->nullable();
+        });
+
+        Schema::create('produk_grade', function (Blueprint $table) {
+            $table->increments('id_produk_grade');
+            $table->integer('id_produk');
+            $table->char('grade', 1);
+            $table->decimal('harga_per_kg', 12, 2);
+            $table->decimal('stok_kg', 12, 3)->default(0);
         });
 
         Schema::create('ongkir_wilayah', function (Blueprint $table) {
@@ -51,6 +60,9 @@ class CheckoutShippingTest extends TestCase
             $table->integer('jumlah');
             $table->decimal('harga', 12, 2);
             $table->decimal('subtotal', 12, 2);
+            $table->char('grade', 1)->nullable();
+            $table->string('satuan', 12)->nullable();
+            $table->unsignedInteger('berat_gram')->nullable();
         });
 
         Schema::create('pembayaran', function (Blueprint $table) {
@@ -197,10 +209,130 @@ class CheckoutShippingTest extends TestCase
             'role' => 'Pelanggan',
         ])->post(route('pembayaran.method', 1), ['metode_pembayaran' => 'BCA'])
             ->assertRedirect(route('pembayaran.show', 1))
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors([
+                'nama_pemilik_rekening_pengirim',
+                'nomor_rekening_pengirim',
+            ]);
         $this->assertDatabaseHas('pembayaran', [
             'id_pesanan' => 1,
             'metode_pembayaran' => 'QRIS',
+        ]);
+    }
+
+    public function test_fresh_strawberry_checkout_uses_selected_grade_price_and_stock_snapshot(): void
+    {
+        DB::table('produk')->insert([
+            'id_produk' => 2,
+            'nama_produk' => 'Stroberi Segar',
+            'foto_produk' => 'strawberry.jpeg',
+            'harga_produk' => 0,
+            'stok_produk' => 0,
+        ]);
+        DB::table('produk_grade')->insert([
+            ['id_produk' => 2, 'grade' => 'A', 'harga_per_kg' => 80000, 'stok_kg' => 4],
+            ['id_produk' => 2, 'grade' => 'B', 'harga_per_kg' => 70000, 'stok_kg' => 3],
+            ['id_produk' => 2, 'grade' => 'C', 'harga_per_kg' => 50000, 'stok_kg' => 2],
+        ]);
+        DB::table('ongkir_wilayah')->insert([
+            'nama_wilayah' => 'Bandung Raya',
+            'tarif' => 15000,
+            'aktif' => true,
+        ]);
+
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+            'keranjang' => [
+                'grade-2-A' => ['id_produk' => 2, 'jumlah' => 2, 'grade' => 'A'],
+            ],
+        ])->get(route('checkout.index'))
+            ->assertOk()
+            ->assertSee('Grade A')
+            ->assertSee('Rp80.000/kg');
+
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+            'keranjang' => [
+                'grade-2-A' => ['id_produk' => 2, 'jumlah' => 2, 'grade' => 'A'],
+            ],
+        ])->post(route('checkout.store'), [
+            'nama_penerima' => 'Penerima Uji',
+            'alamat_pengiriman' => 'Jl. Contoh, Kota Bandung',
+            'no_hp' => '08123456789',
+            'metode_pembayaran' => 'Transfer',
+        ])->assertRedirect(route('pembayaran.show', 1));
+
+        $this->assertDatabaseHas('detail_pesanan', [
+            'id_produk' => 2,
+            'jumlah' => 2,
+            'harga' => 80000,
+            'subtotal' => 160000,
+            'grade' => 'A',
+            'satuan' => 'kg',
+        ]);
+        $this->assertDatabaseHas('produk_grade', [
+            'id_produk' => 2,
+            'grade' => 'A',
+            'stok_kg' => 2,
+        ]);
+        $this->assertDatabaseHas('produk_grade', [
+            'id_produk' => 2,
+            'grade' => 'B',
+            'stok_kg' => 3,
+        ]);
+
+        DB::table('produk_grade')->where('id_produk', 2)->where('grade', 'A')->update(['harga_per_kg' => 90000]);
+        $this->assertDatabaseHas('detail_pesanan', [
+            'id_produk' => 2,
+            'harga' => 80000,
+            'subtotal' => 160000,
+        ]);
+    }
+
+    public function test_processed_strawberry_checkout_keeps_database_price_and_package_weight(): void
+    {
+        DB::table('produk')->insert([
+            'id_produk' => 3,
+            'nama_produk' => 'Selai Strawberry',
+            'foto_produk' => 'selai.jpeg',
+            'harga_produk' => 15000,
+            'stok_produk' => 5,
+            'berat_gram' => 100,
+        ]);
+        DB::table('ongkir_wilayah')->insert([
+            'nama_wilayah' => 'Bandung Raya',
+            'tarif' => 15000,
+            'aktif' => true,
+        ]);
+
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+            'keranjang' => [
+                3 => ['id_produk' => 3, 'jumlah' => 2],
+            ],
+        ])->post(route('checkout.store'), [
+            'nama_penerima' => 'Penerima Uji',
+            'alamat_pengiriman' => 'Jl. Contoh, Kota Bandung',
+            'no_hp' => '08123456789',
+            'metode_pembayaran' => 'Transfer',
+        ])->assertRedirect(route('pembayaran.show', 1));
+
+        $this->assertDatabaseHas('detail_pesanan', [
+            'id_produk' => 3,
+            'jumlah' => 2,
+            'harga' => 15000,
+            'subtotal' => 30000,
+            'grade' => null,
+            'satuan' => 'paket',
+            'berat_gram' => 100,
+        ]);
+        $this->assertDatabaseHas('produk', [
+            'id_produk' => 3,
+            'harga_produk' => 15000,
+            'stok_produk' => 3,
+            'berat_gram' => 100,
         ]);
     }
 }

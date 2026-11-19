@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Support\DeliveryEstimate;
 use App\Support\OperationalSchedule;
+use App\Support\ProductCatalog;
 use App\Support\ShippingZoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-
 class CheckoutController extends Controller
 {
     // Memastikan pelanggan sudah login
@@ -51,30 +51,68 @@ class CheckoutController extends Controller
             ->get();
         abort_if($wilayahOngkir->isEmpty(), 503, 'Tarif pengiriman belum tersedia. Silakan hubungi Admin.');
 
+        $idProduk = collect($keranjang)->pluck('id_produk')->filter()->unique()->values();
         $produkTersedia = DB::table('produk')
-            ->whereIn('id_produk', array_keys($keranjang))
+            ->whereIn('id_produk', $idProduk)
             ->get()
             ->keyBy('id_produk');
+        $grades = $idProduk->isEmpty()
+            ? collect()
+            : DB::table('produk_grade')
+                ->whereIn('id_produk', $idProduk)
+                ->get()
+                ->keyBy(fn (object $grade): string => $grade->id_produk.'-'.$grade->grade);
         $subtotalProduk = 0;
 
-        foreach ($keranjang as $idProduk => $item) {
-            $produk = $produkTersedia->get($idProduk);
+        foreach ($keranjang as $cartKey => &$item) {
+            $produk = $produkTersedia->get($item['id_produk'] ?? $cartKey);
 
             if (! $produk) {
                 return redirect()->route('keranjang.index')
                     ->with('error', 'Ada produk yang sudah tidak tersedia. Periksa kembali keranjang.');
             }
 
-            if (! (bool) ($produk->is_available ?? true) || (int) $produk->stok_produk < 1) {
+            if (! (bool) ($produk->is_available ?? true)) {
                 return redirect()->route('keranjang.index')
                     ->with('error', 'Maaf, produk sedang habis dan tidak dapat dipesan.');
             }
 
-            $keranjang[$idProduk]['nama_produk'] = $produk->nama_produk;
-            $keranjang[$idProduk]['harga_produk'] = $produk->harga_produk;
-            $keranjang[$idProduk]['foto_produk'] = $produk->foto_produk;
-            $subtotalProduk += $produk->harga_produk * $item['jumlah'];
+            if (ProductCatalog::isHematPackage($produk->nama_produk)) {
+                return redirect()->route('keranjang.index')
+                    ->with('error', 'Paket Hemat sudah tidak tersedia. Hapus dari keranjang untuk melanjutkan.');
+            }
+
+            if (! empty($item['grade'])) {
+                $grade = $grades->get($produk->id_produk.'-'.$item['grade']);
+                if (! $grade || (int) $item['jumlah'] > (float) $grade->stok_kg) {
+                    return redirect()->route('keranjang.index')
+                        ->with('error', 'Stok grade yang dipilih berubah. Periksa kembali keranjang.');
+                }
+
+                $item['harga_produk'] = $grade->harga_per_kg;
+                $item['foto_produk'] = ProductCatalog::gradeImage($item['grade']);
+                $item['satuan'] = 'kg';
+            } else {
+                if (ProductCatalog::isFreshStrawberry($produk->nama_produk)) {
+                    return redirect()->route('produk.show', $produk->id_produk)
+                        ->with('error', 'Pilih grade stroberi segar sebelum melanjutkan.');
+                }
+                if ((int) $produk->stok_produk < 1 || (int) $item['jumlah'] > (int) $produk->stok_produk) {
+                    return redirect()->route('keranjang.index')
+                        ->with('error', 'Stok produk tidak mencukupi. Periksa kembali keranjang.');
+                }
+
+                $item['harga_produk'] = $produk->harga_produk;
+                $item['foto_produk'] = $produk->foto_produk;
+                $item['satuan'] = $produk->berat_gram ? 'paket' : 'pcs';
+                $item['berat_gram'] = $produk->berat_gram;
+            }
+            $item['id_produk'] = $produk->id_produk;
+            $item['nama_produk'] = $produk->nama_produk;
+            $subtotalProduk += $item['harga_produk'] * $item['jumlah'];
         }
+        unset($item);
+        session(['keranjang' => $keranjang]);
 
         $aturanWilayahOngkir = ShippingZoneResolver::rules();
         $tarifWilayahOngkir = $wilayahOngkir
@@ -173,9 +211,60 @@ class CheckoutController extends Controller
                     ]);
                 }
 
-                if (! (bool) ($produk->is_available ?? true) || (int) $produk->stok_produk < 1) {
+                if (! (bool) ($produk->is_available ?? true)) {
                     throw ValidationException::withMessages([
                         'keranjang' => 'Maaf, produk sedang habis dan tidak dapat dipesan.',
+                    ]);
+                }
+
+                if (ProductCatalog::isHematPackage($produk->nama_produk)) {
+                    throw ValidationException::withMessages([
+                        'keranjang' => 'Paket Hemat sudah tidak tersedia. Hapus dari keranjang.',
+                    ]);
+                }
+
+                if (! empty($item['grade'])) {
+                    if (! ProductCatalog::isFreshStrawberry($produk->nama_produk)) {
+                        throw ValidationException::withMessages([
+                            'keranjang' => 'Pilihan grade hanya berlaku untuk stroberi segar.',
+                        ]);
+                    }
+
+                    $varian = DB::table('produk_grade')
+                        ->where('id_produk', $produk->id_produk)
+                        ->where('grade', $item['grade'])
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $varian || $jumlah > (float) $varian->stok_kg) {
+                        throw ValidationException::withMessages([
+                            'keranjang' => "Stok Grade {$item['grade']} tidak mencukupi.",
+                        ]);
+                    }
+
+                    $harga = (float) $varian->harga_per_kg;
+                    $subtotal = $harga * $jumlah;
+                    $subtotalProduk += $subtotal;
+                    $detailPesanan[] = [
+                        'id_produk' => $produk->id_produk,
+                        'jumlah' => $jumlah,
+                        'harga' => $harga,
+                        'subtotal' => $subtotal,
+                        'grade' => $item['grade'],
+                        'satuan' => 'kg',
+                        'berat_gram' => null,
+                    ];
+
+                    DB::table('produk_grade')
+                        ->where('id_produk_grade', $varian->id_produk_grade)
+                        ->decrement('stok_kg', $jumlah);
+
+                    continue;
+                }
+
+                if (ProductCatalog::isFreshStrawberry($produk->nama_produk)) {
+                    throw ValidationException::withMessages([
+                        'keranjang' => 'Pilih grade stroberi segar sebelum checkout.',
                     ]);
                 }
 
@@ -189,14 +278,18 @@ class CheckoutController extends Controller
                     ]);
                 }
 
-                $subtotal = $produk->harga_produk * $jumlah;
+                $harga = (float) $produk->harga_produk;
+                $subtotal = $harga * $jumlah;
                 $subtotalProduk += $subtotal;
 
                 $detailPesanan[] = [
                     'id_produk' => $produk->id_produk,
                     'jumlah' => $jumlah,
-                    'harga' => $produk->harga_produk,
+                    'harga' => $harga,
                     'subtotal' => $subtotal,
+                    'grade' => null,
+                    'satuan' => $produk->berat_gram ? 'paket' : 'pcs',
+                    'berat_gram' => $produk->berat_gram,
                 ];
 
                 // Kurangi stok dalam transaksi yang sama

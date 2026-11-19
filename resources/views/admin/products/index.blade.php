@@ -14,11 +14,12 @@
                 $namaProduk = strtolower($item->nama_produk);
                 $kategori = str_contains($namaProduk, 'keripik') ? 'Keripik' : (str_contains($namaProduk, 'selai') ? 'Selai' : (str_contains($namaProduk, 'segar') ? 'Segar' : 'Olahan'));
                 $isAvailable = (bool) ($item->is_available ?? true);
+                $isFresh = \App\Support\ProductCatalog::isFreshStrawberry($item->nama_produk);
             @endphp
             <div class="product-row">
                 <a class="product-edit-link" href="{{ route('admin.products.edit', $item->id_produk) }}">
                     @if ($item->foto_produk)<img class="product-thumb" src="{{ asset('images/'.$item->foto_produk) }}" alt="{{ $item->nama_produk }}">@else<img class="product-thumb" src="{{ asset('images/strawberry.jpeg') }}" alt="">@endif
-                    <span class="product-info"><strong>{{ $item->nama_produk }}</strong><small>{{ $kategori }}{{ $item->berat_gram ? ' · '.$item->berat_gram.' gram' : '' }}</small></span>
+                    <span class="product-info"><strong>{{ $item->nama_produk }}</strong><small>{{ $kategori }}{{ $isFresh ? ' · harga dan stok per grade' : ($item->berat_gram ? ' · '.$item->berat_gram.' gram/kemasan' : '') }}</small></span>
                     <span class="row-action" aria-label="Edit produk">✎</span>
                 </a>
                 <form method="POST" action="{{ route('admin.products.toggle', $item->id_produk) }}">

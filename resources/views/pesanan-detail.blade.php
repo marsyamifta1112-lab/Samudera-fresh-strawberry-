@@ -45,6 +45,7 @@
         .return-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
         .return-card { margin-top: 14px; padding: 14px; border: 1px solid #eee; border-radius: 10px; font-size: 14px; }
         .return-status { display: inline-block; margin: 5px 8px 5px 0; padding: 5px 9px; border-radius: 5px; background: #e5f2e9; color: #245b3b; font-size: 12px; }
+        .return-proof-preview { display: block; width: min(100%, 360px); max-height: 260px; margin: 10px 0; border-radius: 8px; background: #f5f5f5; object-fit: contain; }
         .form-alert { margin-bottom: 15px; padding: 12px 15px; border-radius: 8px; background: #e5f2e9; color: #245b3b; }
         .form-alert.error { background: #fde8ec; color: #a3223d; }
 
@@ -124,17 +125,21 @@
             @forelse ($detailPesanan as $item)
                 <div class="detail-row">
                     <div class="product-info">
-                        @if ($item->foto_produk)
+                        @if ($item->foto_produk || $item->grade)
                             <img
                                 class="product-image"
-                                src="{{ asset('images/' . $item->foto_produk) }}"
-                                alt="{{ $item->nama_produk ?? 'Produk' }}"
+                                src="{{ asset('images/' . ($item->grade ? \App\Support\ProductCatalog::gradeImage($item->grade) : $item->foto_produk)) }}"
+                                alt="{{ $item->nama_produk ?? 'Produk' }}{{ $item->grade ? ' Grade '.$item->grade : '' }}"
                             >
                         @endif
 
                         <div>
-                            <div class="product-name">{{ $item->nama_produk ?? 'Produk tidak tersedia' }}</div>
-                            <div class="muted">{{ $item->jumlah }} x Rp{{ number_format($item->harga, 0, ',', '.') }}</div>
+                            <div class="product-name">{{ $item->nama_produk ?? 'Produk tidak tersedia' }}{{ $item->grade ? ' · Grade '.$item->grade : '' }}</div>
+                            @if ($item->grade)
+                                <div class="muted">{{ $item->jumlah }} kg × Rp{{ number_format($item->harga, 0, ',', '.') }}/kg</div>
+                            @else
+                                <div class="muted">{{ $item->jumlah }} {{ $item->berat_gram ? 'kemasan' : 'pcs' }}{{ $item->berat_gram ? ' · '.$item->berat_gram.' gram/kemasan' : '' }} × Rp{{ number_format($item->harga, 0, ',', '.') }}/{{ $item->berat_gram ? 'kemasan' : 'pcs' }}</div>
+                            @endif
                         </div>
                     </div>
 
@@ -158,13 +163,14 @@
 
                         <div class="return-grid">
                             <div>
-                                <label for="jumlah-{{ $item->id_detail }}">Jumlah *</label>
-                                <input id="jumlah-{{ $item->id_detail }}" type="number" name="jumlah" min="1" max="{{ $quantityAvailable }}" required>
+                                <label for="jumlah-{{ $item->id_detail }}">Jumlah{{ $item->grade ? ' (kg)' : ($item->berat_gram ? ' (kemasan)' : ' (pcs)') }} *</label>
+                                    <input id="jumlah-{{ $item->id_detail }}" type="number" name="jumlah" min="1" max="{{ $quantityAvailable }}" step="1" required>
                             </div>
 
                             <div>
-                                <label for="foto-{{ $item->id_detail }}">Foto Bukti *</label>
-                                <input id="foto-{{ $item->id_detail }}" type="file" name="foto_bukti" accept="image/jpeg,image/png,image/webp" required>
+                                <label for="foto-{{ $item->id_detail }}">Foto atau Video Bukti *</label>
+                                <input id="foto-{{ $item->id_detail }}" type="file" name="foto_bukti" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" required>
+                                <small>Foto maks. 5 MB atau video MP4, MOV, WebM maks. 50 MB.</small>
                             </div>
 
                             <div>
@@ -237,7 +243,14 @@
                                 <p class="muted">Catatan Admin: {{ $return->catatan_admin }}</p>
                             @endif
 
-                            <a href="{{ route('pesanan.return.proof', [$pesanan->id_pesanan, $return->id_return]) }}">Lihat foto bukti</a>
+                            @php($proofUrl = route('pesanan.return.proof', [$pesanan->id_pesanan, $return->id_return]))
+                            @if (in_array(strtolower(pathinfo($return->foto_bukti ?? '', PATHINFO_EXTENSION)), ['mp4', 'mov', 'webm'], true))
+                                <video class="return-proof-preview" controls preload="metadata" src="{{ $proofUrl }}">Browser Anda tidak mendukung pemutaran video.</video>
+                                <a href="{{ $proofUrl }}" target="_blank" rel="noopener">Buka video bukti</a>
+                            @else
+                                <img class="return-proof-preview" src="{{ $proofUrl }}" alt="Bukti return produk">
+                                <a href="{{ $proofUrl }}" target="_blank" rel="noopener">Buka foto bukti</a>
+                            @endif
                         </article>
                     @endforeach
                 @endforeach

@@ -52,7 +52,7 @@ class PembayaranController extends Controller
         $detailPesanan = DB::table('detail_pesanan as dp')
             ->leftJoin('produk as pr', 'pr.id_produk', '=', 'dp.id_produk')
             ->where('dp.id_pesanan', $pesanan->id_pesanan)
-            ->select('dp.jumlah', 'dp.harga', 'dp.subtotal', 'pr.nama_produk')
+            ->select('dp.jumlah', 'dp.harga', 'dp.subtotal', 'dp.grade', 'dp.satuan', 'dp.berat_gram', 'pr.nama_produk')
             ->get();
         $pesanan->subtotal_produk = (float) $detailPesanan->sum('subtotal');
 
@@ -84,21 +84,30 @@ class PembayaranController extends Controller
         }
 
         $pembayaran = $this->findOrderPayment($pesanan->id_pesanan);
+        if (
+            ! $pembayaran->bukti_pembayaran
+            && (! filled($pembayaran->nama_pemilik_rekening_pengirim) || ! filled($pembayaran->nomor_rekening_pengirim))
+        ) {
+            return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
+                ->with('error', 'Isi dan simpan nama serta nomor rekening pengirim sebelum mengunggah bukti transfer.');
+        }
 
         return view('pembayaran-upload', compact('pesanan', 'pembayaran'));
     }
 
     public function pilihMetode(Request $request, $id)
     {
-        $data = $request->validate([
-            'metode_pembayaran' => 'required|in:BCA,BRI,BNI,Mandiri',
-        ]);
-
         $pesanan = $this->findCustomerOrder($id);
 
         if (! $pesanan) {
             abort(404);
         }
+
+        $data = $request->validate([
+            'metode_pembayaran' => 'required|in:BCA,BRI,BNI,Mandiri',
+            'nama_pemilik_rekening_pengirim' => 'required|string|max:100',
+            'nomor_rekening_pengirim' => ['required', 'string', 'min:5', 'max:34', 'regex:/^[0-9]+$/'],
+        ]);
 
         if ($pesanan->ongkir === null) {
             return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
@@ -119,7 +128,11 @@ class PembayaranController extends Controller
 
         DB::table('pembayaran')
             ->where('id_pembayaran', $pembayaran->id_pembayaran)
-            ->update(['metode_pembayaran' => $data['metode_pembayaran']]);
+            ->update([
+                'metode_pembayaran' => $data['metode_pembayaran'],
+                'nama_pemilik_rekening_pengirim' => $data['nama_pemilik_rekening_pengirim'],
+                'nomor_rekening_pengirim' => $data['nomor_rekening_pengirim'],
+            ]);
 
         return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
             ->with('success', 'Bank pengirim berhasil disimpan.');
@@ -143,6 +156,13 @@ class PembayaranController extends Controller
         }
 
         $pembayaran = $this->findOrderPayment($pesanan->id_pesanan);
+        if (
+            ! $pembayaran->bukti_pembayaran
+            && (! filled($pembayaran->nama_pemilik_rekening_pengirim) || ! filled($pembayaran->nomor_rekening_pengirim))
+        ) {
+            return redirect()->route('pembayaran.show', $pesanan->id_pesanan)
+                ->with('error', 'Isi dan simpan nama serta nomor rekening pengirim sebelum mengunggah bukti transfer.');
+        }
 
         if ($pembayaran->metode_pembayaran === 'Transfer') {
             return redirect()->route('pembayaran.show', $pesanan->id_pesanan)

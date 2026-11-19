@@ -333,14 +333,20 @@
                             <div>
                                 <h2 class="product-name">
                                     {{ $item['nama_produk'] }}
+                                    @if (!empty($item['grade']))
+                                        · Grade {{ $item['grade'] }}
+                                    @endif
                                 </h2>
                                 @if (! ($item['is_available'] ?? true))
                                     <span class="availability-badge sold">Habis</span>
                                 @endif
 
                                 <p class="product-price">
-                                    Rp{{ number_format($item['harga_produk'], 0, ',', '.') }}
+                                    Rp{{ number_format($item['harga_produk'], 0, ',', '.') }}{{ !empty($item['grade']) ? '/kg' : (!empty($item['berat_gram']) ? '/kemasan' : '/pcs') }}
                                 </p>
+                                @if (!empty($item['berat_gram']))
+                                    <p class="product-price">{{ number_format($item['berat_gram'], 0, ',', '.') }} gram per kemasan</p>
+                                @endif
 
                                 <div class="product-controls">
                                     <form
@@ -359,7 +365,7 @@
                                             aria-label="Kurangi jumlah"
                                         >−</button>
 
-                                        <span>{{ $item['jumlah'] }}</span>
+                                        <span>{{ $item['jumlah'] }} {{ !empty($item['grade']) ? 'kg' : (!empty($item['berat_gram']) ? 'kemasan' : 'pcs') }}</span>
 
                                         <button
                                             type="submit"

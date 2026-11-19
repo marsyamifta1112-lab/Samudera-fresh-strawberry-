@@ -114,6 +114,16 @@
         }
         .availability-badge.available { background: #e5f2e9; color: #245b3b; }
         .availability-badge.sold { background: #fde3e8; color: #b42342; }
+        .grade-select {
+            width: 100%;
+            min-height: 43px;
+            margin: 0 0 14px;
+            padding: 9px 11px;
+            border: 1px solid #e8e5df;
+            border-radius: 7px;
+            background: #fff;
+            font: inherit;
+        }
         .description-title, .quantity-title { font-size: 15px; font-weight: bold; }
         .description-title { margin-bottom: 7px; }
         .description {
@@ -243,10 +253,18 @@
                 <h2 class="product-name">{{ $produk->nama_produk }}</h2>
                 <div class="rating" aria-label="Rating produk">★★★★★</div>
 
-                <div class="price-stock">
-                    <span class="price">Rp{{ number_format($produk->harga_produk, 0, ',', '.') }}</span>
-                    <span class="stock">Stok: {{ $produk->stok_produk }}</span>
-                </div>
+                @if ($isStrawberryFresh)
+                    @php($initialGrade = $grades->first())
+                    <div class="price-stock">
+                        <span class="price" id="grade-price">Rp{{ number_format($initialGrade->harga_per_kg ?? 0, 0, ',', '.') }}/kg</span>
+                        <span class="stock" id="grade-stock">Stok: {{ number_format($initialGrade->stok_kg ?? 0, 3, ',', '.') }} kg</span>
+                    </div>
+                @else
+                    <div class="price-stock">
+                        <span class="price">Rp{{ number_format($produk->harga_produk, 0, ',', '.') }}/{{ $produk->berat_gram ? 'kemasan' : 'pcs' }}</span>
+                        <span class="stock">Stok: {{ $produk->stok_produk }}</span>
+                    </div>
+                @endif
                 <span class="availability-badge {{ $dapatDipesan ? 'available' : 'sold' }}">
                     {{ $dapatDipesan ? 'Tersedia' : 'Habis' }}
                 </span>
@@ -266,7 +284,25 @@
                     id="add-to-cart-form"
                 >
                     @csrf
-                    <div class="quantity-title">Jumlah</div>
+                    @if ($isStrawberryFresh)
+                        @if ($grades->isNotEmpty())
+                            <label class="quantity-title" for="grade-select">Pilih Grade</label>
+                            <select class="grade-select" id="grade-select" name="grade" required>
+                                @foreach ($grades as $grade)
+                                    <option
+                                        value="{{ $grade->grade }}"
+                                        data-price="{{ $grade->harga_per_kg }}"
+                                        data-stock="{{ $grade->stok_kg }}"
+                                        data-image="{{ \App\Support\ProductCatalog::gradeImage($grade->grade) }}"
+                                        @selected(old('grade', $grades->first()->grade) === $grade->grade)
+                                    >Grade {{ $grade->grade }} · Rp{{ number_format($grade->harga_per_kg, 0, ',', '.') }}/kg · Stok {{ number_format($grade->stok_kg, 3, ',', '.') }} kg</option>
+                                @endforeach
+                            </select>
+                        @else
+                            <p class="alert error">Grade stroberi belum disiapkan Admin.</p>
+                        @endif
+                    @endif
+                    <div class="quantity-title">{{ $isStrawberryFresh ? 'Jumlah (kg)' : 'Jumlah kemasan' }}</div>
                     <div class="purchase-row">
                         <div class="quantity-control">
                             <button
@@ -281,10 +317,10 @@
                                 name="jumlah"
                                 value="1"
                                 min="1"
-                                max="{{ max(1, $stokTersedia) }}"
+                                max="{{ $isStrawberryFresh ? max(1, (int) ($grades->first()->stok_kg ?? 0)) : max(1, $stokTersedia) }}"
                                 inputmode="numeric"
                                 aria-label="Jumlah produk"
-                                {{ ! $dapatDipesan || $stokTersedia < 1 ? 'disabled' : '' }}
+                                {{ ! $dapatDipesan ? 'disabled' : '' }}
                                 required
                             >
                             <button
@@ -298,8 +334,8 @@
                         <button
                             type="submit"
                             class="add-button"
-                            {{ ! $dapatDipesan || $stokTersedia < 1 ? 'disabled' : '' }}
-                        >{{ $dapatDipesan && $stokTersedia > 0 ? 'Tambah ke Keranjang' : 'Produk Habis' }}</button>
+                            {{ ! $dapatDipesan || ($isStrawberryFresh && (!$initialGrade || (float) $initialGrade->stok_kg < 1)) || (!$isStrawberryFresh && $stokTersedia < 1) ? 'disabled' : '' }}
+                        >{{ $dapatDipesan ? 'Tambah ke Keranjang' : 'Produk Habis' }}</button>
                     </div>
                 </form>
             </section>
@@ -312,15 +348,38 @@
         const quantityInput = document.getElementById('quantity');
         const minusButton = document.getElementById('quantity-minus');
         const plusButton = document.getElementById('quantity-plus');
-        const canAddProduct = @json($dapatDipesan && $stokTersedia > 0);
+        const canAddProduct = @json($dapatDipesan);
+        const gradeSelect = document.getElementById('grade-select');
+        const gradePrice = document.getElementById('grade-price');
+        const gradeStock = document.getElementById('grade-stock');
+        const addButton = document.querySelector('.add-button');
+        const productImage = document.querySelector('.product-image');
 
         function syncQuantityButtons() {
             const quantity = Number(quantityInput.value || quantityInput.min);
             const minimum = Number(quantityInput.min);
             const maximum = Number(quantityInput.max);
 
-            minusButton.disabled = !canAddProduct || quantity <= minimum;
-            plusButton.disabled = !canAddProduct || quantity >= maximum;
+            const selectedStock = gradeSelect
+                ? Number(gradeSelect.selectedOptions[0].dataset.stock)
+                : maximum;
+            const canBuyQuantity = canAddProduct && selectedStock >= quantity;
+            minusButton.disabled = !canBuyQuantity || quantity <= minimum;
+            plusButton.disabled = !canBuyQuantity || quantity >= maximum;
+            addButton.disabled = !canBuyQuantity;
+        }
+
+        if (gradeSelect) {
+            gradeSelect.addEventListener('change', function () {
+                const option = gradeSelect.selectedOptions[0];
+                quantityInput.max = Math.max(1, Math.floor(Number(option.dataset.stock)));
+                quantityInput.value = Math.min(Number(quantityInput.value), Number(quantityInput.max));
+                gradePrice.textContent = 'Rp' + new Intl.NumberFormat('id-ID').format(Number(option.dataset.price)) + '/kg';
+                gradeStock.textContent = 'Stok: ' + new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 }).format(Number(option.dataset.stock)) + ' kg';
+                productImage.src = "{{ asset('images') }}/" + option.dataset.image;
+                syncQuantityButtons();
+            });
+            gradeSelect.dispatchEvent(new Event('change'));
         }
 
         minusButton.addEventListener('click', function () {

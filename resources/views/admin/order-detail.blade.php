@@ -12,8 +12,16 @@
             <div><div class="detail-label">Produk</div><div class="detail-products">
                 @forelse ($detailPesanan as $item)
                     <div class="detail-product">
-                        @if ($item->foto_produk)<img class="product-thumb" src="{{ asset('images/'.$item->foto_produk) }}" alt="">@else<img class="product-thumb" src="{{ asset('images/strawberry.jpeg') }}" alt="">@endif
-                        <span>{{ $item->nama_produk ?? 'Produk dihapus' }} · {{ $item->jumlah }} pcs · Rp{{ number_format($item->subtotal, 0, ',', '.') }}</span>
+                        @if ($item->foto_produk || $item->grade)<img class="product-thumb" src="{{ asset('images/'.($item->grade ? \App\Support\ProductCatalog::gradeImage($item->grade) : $item->foto_produk)) }}" alt="">@else<img class="product-thumb" src="{{ asset('images/strawberry.jpeg') }}" alt="">@endif
+                        <span>
+                            {{ $item->nama_produk ?? 'Produk dihapus' }}
+                            @if ($item->grade)
+                                · Grade {{ $item->grade }} · {{ $item->jumlah }} kg
+                            @else
+                                · {{ $item->jumlah }} {{ $item->berat_gram ? 'kemasan' : 'pcs' }}{{ $item->berat_gram ? ' · '.$item->berat_gram.' gram/kemasan' : '' }}
+                            @endif
+                            · Rp{{ number_format($item->subtotal, 0, ',', '.') }}
+                        </span>
                     </div>
                 @empty
                     <span class="muted">Detail produk tidak tersedia.</span>

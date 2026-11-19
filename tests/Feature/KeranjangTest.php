@@ -23,7 +23,16 @@ class KeranjangTest extends TestCase
             $table->decimal('harga_produk', 12, 2);
             $table->string('foto_produk')->nullable();
             $table->unsignedInteger('stok_produk');
+            $table->unsignedInteger('berat_gram')->nullable();
             $table->boolean('is_available')->default(true);
+        });
+
+        Schema::create('produk_grade', function (Blueprint $table) {
+            $table->increments('id_produk_grade');
+            $table->unsignedBigInteger('id_produk');
+            $table->char('grade', 1);
+            $table->decimal('harga_per_kg', 12, 2);
+            $table->decimal('stok_kg', 12, 3)->default(0);
         });
 
         Schema::create('pesanan', function (Blueprint $table) {
@@ -49,6 +58,9 @@ class KeranjangTest extends TestCase
             $table->unsignedInteger('jumlah');
             $table->decimal('harga', 12, 2);
             $table->decimal('subtotal', 12, 2);
+            $table->char('grade', 1)->nullable();
+            $table->string('satuan', 12)->nullable();
+            $table->unsignedInteger('berat_gram')->nullable();
         });
 
         Schema::create('pembayaran', function (Blueprint $table) {
@@ -59,6 +71,8 @@ class KeranjangTest extends TestCase
             $table->decimal('jumlah_bayar', 12, 2);
             $table->string('bukti_pembayaran')->nullable();
             $table->string('status_pembayaran');
+            $table->string('nama_pemilik_rekening_pengirim', 100)->nullable();
+            $table->string('nomor_rekening_pengirim', 34)->nullable();
             $table->string('nomor_struk', 32)->nullable()->unique();
             $table->dateTime('tanggal_verifikasi')->nullable();
         });
@@ -104,7 +118,7 @@ class KeranjangTest extends TestCase
         ]);
 
         $this->idProduk = DB::table('produk')->insertGetId([
-            'nama_produk' => 'Stroberi Segar',
+            'nama_produk' => 'Keripik Strawberry',
             'harga_produk' => 25000,
             'foto_produk' => 'stroberi.jpg',
             'stok_produk' => 5,
@@ -137,7 +151,7 @@ class KeranjangTest extends TestCase
             ->get(route('keranjang.index'))
             ->assertOk()
             ->assertSee('Ringkasan')
-            ->assertSee('Stroberi Segar');
+            ->assertSee('Keripik Strawberry');
     }
 
     public function test_cart_quantity_and_remove_forms_use_their_supported_http_methods(): void
@@ -148,7 +162,7 @@ class KeranjangTest extends TestCase
             'keranjang' => [
                 $this->idProduk => [
                     'id_produk' => $this->idProduk,
-                    'nama_produk' => 'Stroberi Segar',
+                    'nama_produk' => 'Keripik Strawberry',
                     'harga_produk' => 25000,
                     'foto_produk' => 'stroberi.jpg',
                     'jumlah' => 1,
@@ -175,7 +189,7 @@ class KeranjangTest extends TestCase
             'keranjang' => [
                 $this->idProduk => [
                     'id_produk' => $this->idProduk,
-                    'nama_produk' => 'Stroberi Segar',
+                    'nama_produk' => 'Keripik Strawberry',
                     'harga_produk' => 25000,
                     'foto_produk' => 'stroberi.jpg',
                     'jumlah' => 2,
@@ -194,7 +208,7 @@ class KeranjangTest extends TestCase
             'keranjang' => [
                 $this->idProduk => [
                     'id_produk' => $this->idProduk,
-                    'nama_produk' => 'Stroberi Segar',
+                    'nama_produk' => 'Keripik Strawberry',
                     'harga_produk' => 25000,
                     'foto_produk' => 'stroberi.jpg',
                     'jumlah' => 2,
@@ -221,7 +235,7 @@ class KeranjangTest extends TestCase
             'keranjang' => [
                 $this->idProduk => [
                     'id_produk' => $this->idProduk,
-                    'nama_produk' => 'Stroberi Segar',
+                    'nama_produk' => 'Keripik Strawberry',
                     'harga_produk' => 25000,
                     'foto_produk' => 'stroberi.jpg',
                     'jumlah' => 2,
@@ -270,6 +284,8 @@ class KeranjangTest extends TestCase
             'role' => 'Pelanggan',
         ])->post(route('pembayaran.method', 1), [
             'metode_pembayaran' => 'BCA',
+            'nama_pemilik_rekening_pengirim' => 'Pelanggan Uji',
+            'nomor_rekening_pengirim' => '1234567890',
         ])->assertRedirect(route('pembayaran.show', 1));
 
         $this->withSession([
@@ -279,13 +295,15 @@ class KeranjangTest extends TestCase
             ->assertOk()
             ->assertSee('Rp10.000')
             ->assertSee('Rp60.000')
-            ->assertSee('Upload Bukti Pembayaran');
+            ->assertSee('Pelanggan Uji')
+            ->assertSee('Nama Pemilik Rekening Pengirim');
 
         Storage::fake('local');
         $this->withSession([
             'id_pelanggan' => 7,
             'role' => 'Pelanggan',
-        ])->get(route('pembayaran.upload.form', 1))->assertOk();
+        ])->get(route('pembayaran.upload.form', 1))
+            ->assertOk();
     }
 
     public function test_unavailable_or_out_of_stock_products_cannot_be_added_or_checked_out(): void
@@ -294,7 +312,7 @@ class KeranjangTest extends TestCase
 
         $this->get(route('produk.index'))
         ->assertOk()
-        ->assertSee('Stroberi Segar')
+        ->assertSee('Keripik Strawberry')
         ->assertSee('Habis')
         ->assertSee('disabled', false);
         $this->get(route('produk.show', $this->idProduk))
@@ -378,7 +396,8 @@ class KeranjangTest extends TestCase
             ->assertSee('Rp25.000')
             ->assertSee('Subtotal produk')
             ->assertSee('Ongkir')
-            ->assertSee('Upload Bukti Pembayaran')
+            ->assertSee('Simpan Data Rekening Pengirim')
+            ->assertSee('Nama Pemilik Rekening Pengirim')
             ->assertSee('name="metode_pembayaran"', false)
             ->assertSee('BRI')
             ->assertSee('BNI')
@@ -388,10 +407,26 @@ class KeranjangTest extends TestCase
             'id_pelanggan' => 7,
             'role' => 'Pelanggan',
         ])->get(route('pembayaran.upload.form', $idPesanan))
+            ->assertRedirect(route('pembayaran.show', $idPesanan));
+
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+        ])->post(route('pembayaran.method', $idPesanan), [
+            'metode_pembayaran' => 'BCA',
+            'nama_pemilik_rekening_pengirim' => 'Pelanggan Uji',
+            'nomor_rekening_pengirim' => '1234567890',
+        ])->assertRedirect(route('pembayaran.show', $idPesanan));
+
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+        ])->get(route('pembayaran.upload.form', $idPesanan))
             ->assertOk()
             ->assertSee('site-header', false)
             ->assertSee(route('produk.index'))
             ->assertSee('Upload Bukti Pembayaran')
+            ->assertSee('1234567890')
             ->assertSee(route('pembayaran.upload', $idPesanan));
 
         $this->withSession([
@@ -425,6 +460,8 @@ class KeranjangTest extends TestCase
             $this->withSession($session)
                 ->post(route('pembayaran.method', $idPesanan), [
                     'metode_pembayaran' => $bank,
+                    'nama_pemilik_rekening_pengirim' => 'Pelanggan Uji',
+                    'nomor_rekening_pengirim' => '1234567890',
                 ])
                 ->assertRedirect(route('pembayaran.show', $idPesanan))
                 ->assertSessionHas('success');
@@ -432,8 +469,29 @@ class KeranjangTest extends TestCase
             $this->assertDatabaseHas('pembayaran', [
                 'id_pesanan' => $idPesanan,
                 'metode_pembayaran' => $bank,
+                'nama_pemilik_rekening_pengirim' => 'Pelanggan Uji',
+                'nomor_rekening_pengirim' => '1234567890',
             ]);
         }
+    }
+
+    public function test_customer_must_enter_valid_sender_account_details_before_saving_payment_method(): void
+    {
+        $idPesanan = $this->createOrderWithPayment(7);
+
+        $this->withSession([
+            'id_pelanggan' => 7,
+            'role' => 'Pelanggan',
+        ])->post(route('pembayaran.method', $idPesanan), [
+            'metode_pembayaran' => 'BCA',
+            'nama_pemilik_rekening_pengirim' => 'Pelanggan Uji',
+            'nomor_rekening_pengirim' => '123-ABC',
+        ])->assertSessionHasErrors('nomor_rekening_pengirim');
+
+        $this->assertDatabaseMissing('pembayaran', [
+            'id_pesanan' => $idPesanan,
+            'nomor_rekening_pengirim' => '123-ABC',
+        ]);
     }
 
     public function test_customer_can_open_order_history_and_click_an_order_for_details(): void
@@ -461,7 +519,7 @@ class KeranjangTest extends TestCase
             ->assertSee('Pesanan Diproses')
             ->assertSee('Menunggu Pembayaran')
             ->assertSee('Detail Pesanan')
-            ->assertSee('Stroberi Segar')
+            ->assertSee('Keripik Strawberry')
             ->assertSee('Subtotal Produk')
             ->assertSee('Ongkir')
             ->assertSee('Informasi Pengiriman');

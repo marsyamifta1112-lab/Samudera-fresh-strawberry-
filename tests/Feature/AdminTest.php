@@ -25,6 +25,14 @@ class AdminTest extends TestCase
             $table->boolean('is_available')->default(true);
         });
 
+        Schema::create('produk_grade', function (Blueprint $table) {
+            $table->increments('id_produk_grade');
+            $table->integer('id_produk');
+            $table->char('grade', 1);
+            $table->decimal('harga_per_kg', 12, 2);
+            $table->decimal('stok_kg', 12, 3)->default(0);
+        });
+
         Schema::create('pelanggan', function (Blueprint $table) {
             $table->increments('id_pelanggan');
             $table->string('nama_pelanggan');
@@ -78,6 +86,9 @@ class AdminTest extends TestCase
             $table->integer('jumlah')->nullable();
             $table->decimal('harga', 12, 2)->nullable();
             $table->decimal('subtotal', 12, 2)->nullable();
+            $table->char('grade', 1)->nullable();
+            $table->string('satuan', 12)->nullable();
+            $table->unsignedInteger('berat_gram')->nullable();
         });
 
         Schema::create('pembayaran', function (Blueprint $table) {
@@ -88,6 +99,8 @@ class AdminTest extends TestCase
             $table->decimal('jumlah_bayar', 12, 2)->nullable();
             $table->string('bukti_pembayaran')->nullable();
             $table->string('status_pembayaran')->nullable();
+            $table->string('nama_pemilik_rekening_pengirim', 100)->nullable();
+            $table->string('nomor_rekening_pengirim', 34)->nullable();
             $table->string('nomor_struk', 32)->nullable()->unique();
             $table->dateTime('tanggal_verifikasi')->nullable();
         });
@@ -439,6 +452,41 @@ class AdminTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_admin_can_update_price_and_stock_for_each_strawberry_grade(): void
+    {
+        DB::table('produk')->insert([
+            'id_produk' => 10,
+            'nama_produk' => 'Stroberi Segar',
+            'harga_produk' => 0,
+            'stok_produk' => 0,
+        ]);
+        DB::table('produk_grade')->insert([
+            ['id_produk_grade' => 1, 'id_produk' => 10, 'grade' => 'A', 'harga_per_kg' => 80000, 'stok_kg' => 2],
+            ['id_produk_grade' => 2, 'id_produk' => 10, 'grade' => 'B', 'harga_per_kg' => 70000, 'stok_kg' => 3],
+            ['id_produk_grade' => 3, 'id_produk' => 10, 'grade' => 'C', 'harga_per_kg' => 50000, 'stok_kg' => 4],
+        ]);
+
+        $this->actingAsAdmin()
+            ->get(route('admin.inventory'))
+            ->assertOk()
+            ->assertSee('Grade A')
+            ->assertSee('Grade B')
+            ->assertSee('Grade C');
+
+        $this->actingAsAdmin()
+            ->put(route('admin.inventory.grades.update', 2), [
+                'harga_per_kg' => 72000,
+                'stok_kg' => '3.250',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('produk_grade', [
+            'id_produk_grade' => 2,
+            'harga_per_kg' => 72000,
+        ]);
+        $this->assertEquals(3.25, DB::table('produk_grade')->where('id_produk_grade', 2)->value('stok_kg'));
+    }
+
     public function test_admin_can_verify_payment_assign_courier_and_complete_delivery(): void
     {
         DB::table('pelanggan')->insert(['id_pelanggan' => 1, 'nama_pelanggan' => 'Pelanggan Uji']);
@@ -457,6 +505,8 @@ class AdminTest extends TestCase
             'id_pembayaran' => 1,
             'id_pesanan' => 1,
             'metode_pembayaran' => 'BCA',
+            'nama_pemilik_rekening_pengirim' => 'Pelanggan Uji',
+            'nomor_rekening_pengirim' => '1234567890',
             'jumlah_bayar' => 25000,
             'bukti_pembayaran' => 'bukti-pembayaran/receipt.jpg',
             'status_pembayaran' => 'menunggu',
@@ -509,6 +559,8 @@ class AdminTest extends TestCase
             ->assertOk()
             ->assertSee('Verifikasi Pembayaran')
             ->assertSee('Diverifikasi')
+            ->assertSee('Pelanggan Uji')
+            ->assertSee('1234567890')
             ->assertSee(route('admin.payments.receipt', 1));
 
         $this->actingAsAdmin()
@@ -603,6 +655,22 @@ class AdminTest extends TestCase
             ->assertSee('Rp25.000')
             ->assertSee('Rp12.500')
             ->assertSee('Rp37.500')
+            ->assertSee('Simpan Data Rekening Pengirim');
+
+        $this->withSession([
+            'id_pelanggan' => 1,
+            'role' => 'Pelanggan',
+        ])->post(route('pembayaran.method', 1), [
+            'metode_pembayaran' => 'BCA',
+            'nama_pemilik_rekening_pengirim' => 'Pelanggan Uji',
+            'nomor_rekening_pengirim' => '1234567890',
+        ])->assertRedirect(route('pembayaran.show', 1));
+
+        $this->withSession([
+            'id_pelanggan' => 1,
+            'role' => 'Pelanggan',
+        ])->get(route('pembayaran.show', 1))
+            ->assertOk()
             ->assertSee('Upload Bukti Pembayaran');
 
         DB::table('pembayaran')->where('id_pesanan', 1)->update([
@@ -997,11 +1065,21 @@ class AdminTest extends TestCase
             ->assertDontSee('class="page-heading"', false)
             ->assertSee('Pendapatan Harian')
             ->assertSee('Detail Transaksi')
+            ->assertSee(route('admin.reports.print', ['dari' => '2026-05-01', 'sampai' => '2026-05-31']))
             ->assertSee('Pelanggan Mei')
             ->assertSee('Jumlah produk')
             ->assertSee('Total pembayaran')
             ->assertSee('Rp 25.000')
             ->assertDontSee('Pelanggan April');
+
+        $this->actingAsAdmin()
+            ->get(route('admin.reports.print', ['dari' => '2026-05-01', 'sampai' => '2026-05-31']))
+            ->assertOk()
+            ->assertSee('Laporan Transaksi Penjualan')
+            ->assertSee('Pelanggan Mei')
+            ->assertDontSee('Grafik Penjualan')
+            ->assertDontSee('Pelanggan April')
+            ->assertDontSee('Navigasi admin');
 
         $response = $this->actingAsAdmin()
             ->get(route('admin.reports.export', [
@@ -1019,11 +1097,12 @@ class AdminTest extends TestCase
         $workbook = new \PharData($downloadResponse->getFile()->getPathname(), 0, null, \Phar::ZIP);
         $sheet = $workbook['xl/worksheets/sheet1.xml']->getContent();
         $this->assertIsString($sheet);
+        $this->assertStringContainsString('LAPORAN PENJUALAN', $sheet);
         $this->assertStringContainsString('Subtotal Produk (Rp)', $sheet);
         $this->assertStringContainsString('Ongkir (Rp)', $sheet);
         $sheetElementPositions = array_map(
             static fn (string $element): int|false => strpos($sheet, '<'.$element),
-            ['sheetViews', 'cols', 'sheetData', 'sheetProtection', 'autoFilter', 'mergeCells']
+            ['dimension', 'sheetViews', 'sheetFormatPr', 'cols', 'sheetData', 'autoFilter', 'pageMargins']
         );
         $this->assertNotContains(false, $sheetElementPositions);
         $sortedPositions = $sheetElementPositions;
@@ -1035,15 +1114,14 @@ class AdminTest extends TestCase
         $styles = $workbook['xl/styles.xml']->getContent();
         $this->assertIsString($styles);
         $this->assertStringContainsString('<font><name val="Arial"/><b/><color rgb="FFFFFFFF"/><sz val="11"/></font>', $styles);
-        $this->assertStringContainsString('<drawing r:id="rId1"/>', $sheet);
-        $drawing = $workbook['xl/drawings/drawing1.xml']->getContent();
-        $this->assertIsString($drawing);
-        $this->assertStringContainsString('<xdr:col>0</xdr:col>', $drawing);
-        $this->assertStringContainsString('<xdr:ext cx="450000" cy="450000"/>', $drawing);
-        $logo = $workbook['xl/media/logo-samudera.jpg']->getContent();
-        $this->assertIsString($logo);
-        $this->assertGreaterThan(0, strlen($logo));
-        foreach (['[Content_Types].xml', 'xl/workbook.xml', 'xl/styles.xml', 'xl/worksheets/sheet1.xml'] as $part) {
+        foreach ([
+            '[Content_Types].xml',
+            '_rels/.rels',
+            'xl/workbook.xml',
+            'xl/_rels/workbook.xml.rels',
+            'xl/styles.xml',
+            'xl/worksheets/sheet1.xml',
+        ] as $part) {
             $xml = $workbook[$part]->getContent();
             $this->assertIsString($xml);
             $this->assertNotFalse(simplexml_load_string($xml));

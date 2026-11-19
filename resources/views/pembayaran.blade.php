@@ -55,6 +55,9 @@
             color: #c92547;
         }
         .method input { accent-color: #e93658; }
+        .sender-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+        .sender-details label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: bold; }
+        .sender-details input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font: inherit; }
         .bank-submit { margin: 16px 0 0; }
         .account-label { display: block; margin: 28px 0 9px; font-size: 14px; font-weight: bold; }
         .account {
@@ -98,6 +101,7 @@
             nav { flex-wrap: wrap; gap: 15px; }
             .panel { padding: 23px 19px; }
             .method-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .sender-details { grid-template-columns: 1fr; }
             .amount-row { align-items: flex-start; flex-direction: column; }
         }
     </style>
@@ -143,8 +147,8 @@
                     <img class="qris-code-image" src="{{ asset('images/qris-merchant.png') }}" alt="Kode QRIS Samudera Fresh Strawberry">
                 </div>
             @else
-                <h2>Bank Pengirim</h2>
-                <p class="muted">Pilih bank yang kamu gunakan untuk transfer. Transfer ditujukan ke rekening BCA Samudera Fresh Strawberry di bawah; pelanggan dari bank lain juga bisa transfer ke rekening tersebut.</p>
+                <h2>Data Pengirim</h2>
+                <p class="muted">Pilih bank yang kamu gunakan untuk transfer, lalu isi nama dan nomor rekening pengirim. Transfer ditujukan ke rekening Samudera Fresh Strawberry di bawah.</p>
                 @if ($pesanan->ongkir !== null)
                     <form action="{{ route('pembayaran.method', $pesanan->id_pesanan) }}" method="POST">
                         @csrf
@@ -163,14 +167,46 @@
                             @endforeach
                         </div>
                         @if (!$pembayaran->bukti_pembayaran)
-                            <button type="submit" class="button bank-submit">Simpan Bank Pengirim</button>
+                            <div class="sender-details">
+                                <div>
+                                    <label for="nama_pemilik_rekening_pengirim">Nama Pemilik Rekening Pengirim *</label>
+                                    <input
+                                        id="nama_pemilik_rekening_pengirim"
+                                        name="nama_pemilik_rekening_pengirim"
+                                        value="{{ old('nama_pemilik_rekening_pengirim', $pembayaran->nama_pemilik_rekening_pengirim) }}"
+                                        maxlength="100"
+                                        autocomplete="name"
+                                        required
+                                    >
+                                </div>
+                                <div>
+                                    <label for="nomor_rekening_pengirim">Nomor Rekening Pengirim *</label>
+                                    <input
+                                        id="nomor_rekening_pengirim"
+                                        name="nomor_rekening_pengirim"
+                                        value="{{ old('nomor_rekening_pengirim', $pembayaran->nomor_rekening_pengirim) }}"
+                                        inputmode="numeric"
+                                        pattern="[0-9]{5,34}"
+                                        minlength="5"
+                                        maxlength="34"
+                                        autocomplete="off"
+                                        required
+                                    >
+                                </div>
+                            </div>
+                            <button type="submit" class="button bank-submit">Simpan Data Rekening Pengirim</button>
+                        @elseif ($pembayaran->nama_pemilik_rekening_pengirim || $pembayaran->nomor_rekening_pengirim)
+                            <p class="muted">
+                                Nama pemilik: <strong>{{ $pembayaran->nama_pemilik_rekening_pengirim ?: '-' }}</strong><br>
+                                Nomor rekening pengirim: <strong>{{ $pembayaran->nomor_rekening_pengirim ?: '-' }}</strong>
+                            </p>
                         @endif
                     </form>
                 @else
                     <div class="alert error">Admin akan menentukan ongkir berdasarkan alamat pengiriman. Silakan kembali setelah total pembayaran diperbarui.</div>
                 @endif
 
-                <label class="account-label">Nomor Rekening</label>
+                <label class="account-label">Rekening Tujuan Samudera Fresh</label>
                 <div class="account">7829 8832 8274 (a.n. Samudera Fresh Strawberry)</div>
             @endif
 
@@ -210,10 +246,20 @@
                 <p class="muted">Transfer sesuai nominal di atas, lalu unggah bukti pembayaran.</p>
             @endif
 
-            @if ($pembayaran->status_pembayaran !== 'diverifikasi' && $pesanan->ongkir !== null && $pembayaran->metode_pembayaran !== 'Transfer')
+            @if (
+                $pembayaran->status_pembayaran !== 'diverifikasi'
+                && $pesanan->ongkir !== null
+                && (
+                    $pembayaran->metode_pembayaran === 'QRIS'
+                    || filled($pembayaran->nama_pemilik_rekening_pengirim)
+                    && filled($pembayaran->nomor_rekening_pengirim)
+                )
+            )
                 <a class="button" href="{{ route('pembayaran.upload.form', $pesanan->id_pesanan) }}">
                     {{ $pembayaran->bukti_pembayaran ? 'Lihat / Unggah Ulang Bukti' : 'Upload Bukti Pembayaran' }}
                 </a>
+            @elseif ($pembayaran->status_pembayaran !== 'diverifikasi' && $pesanan->ongkir !== null && $pembayaran->metode_pembayaran !== 'QRIS')
+                <p class="muted">Isi dan simpan nama serta nomor rekening pengirim terlebih dahulu sebelum mengunggah bukti pembayaran.</p>
             @endif
             <a class="button" href="{{ route('pesanan.show', $pesanan->id_pesanan) }}">
                 Lihat Status Pesanan

@@ -201,7 +201,12 @@
                     <div class="item">
                         <div>
                             <strong>{{ $item['nama_produk'] }}</strong>
-                            <div>Jumlah: {{ $item['jumlah'] }}</div>
+                            @if (!empty($item['grade']))
+                                <div>Grade {{ $item['grade'] }} · {{ $item['jumlah'] }} kg × Rp{{ number_format($item['harga_produk'], 0, ',', '.') }}/kg</div>
+                            @else
+                                @php($unit = !empty($item['berat_gram']) ? 'kemasan' : 'pcs')
+                                <div>{{ $item['jumlah'] }} {{ $unit }}{{ !empty($item['berat_gram']) ? ' · '.$item['berat_gram'].' gram/kemasan' : '' }} × Rp{{ number_format($item['harga_produk'], 0, ',', '.') }}/{{ $unit }}</div>
+                            @endif
                         </div>
                         <div>
                             Rp{{ number_format($item['harga_produk'] * $item['jumlah'], 0, ',', '.') }}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\DeliveryEstimate;
 use App\Support\OperationalSchedule;
+use App\Support\ProductCatalog;
 use App\Support\ShippingZoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -97,10 +98,12 @@ class AdminController extends Controller
                 'pr.id_produk',
                 'pr.nama_produk',
                 'pr.foto_produk',
+                'pr.berat_gram',
+                'dp.grade',
                 DB::raw('SUM(dp.jumlah) as total_terjual'),
                 DB::raw('SUM(dp.subtotal) as total_penjualan')
             )
-            ->groupBy('pr.id_produk', 'pr.nama_produk', 'pr.foto_produk')
+            ->groupBy('pr.id_produk', 'pr.nama_produk', 'pr.foto_produk', 'pr.berat_gram', 'dp.grade')
             ->orderByDesc('total_terjual')
             ->limit(10)
             ->get();
@@ -129,7 +132,10 @@ class AdminController extends Controller
             $data['foto_produk'] = $foto;
         }
 
-        DB::table('produk')->insert($data);
+        $idProduk = DB::table('produk')->insertGetId($data, 'id_produk');
+        if (ProductCatalog::isFreshStrawberry($data['nama_produk'])) {
+            $this->ensureProductGrades($idProduk);
+        }
 
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil ditambahkan.');
     }
@@ -162,6 +168,9 @@ class AdminController extends Controller
         }
 
         DB::table('produk')->where('id_produk', $id)->update($data);
+        if (ProductCatalog::isFreshStrawberry($data['nama_produk'])) {
+            $this->ensureProductGrades((int) $id);
+        }
 
         if ($fotoBaru) {
             $this->deleteProductImage($produk->foto_produk);
@@ -179,7 +188,10 @@ class AdminController extends Controller
             return back()->with('error', 'Produk tidak dapat dihapus karena tercatat pada riwayat pesanan.');
         }
 
-        DB::table('produk')->where('id_produk', $id)->delete();
+        DB::transaction(function () use ($id): void {
+            DB::table('produk_grade')->where('id_produk', $id)->delete();
+            DB::table('produk')->where('id_produk', $id)->delete();
+        });
         $this->deleteProductImage($produk->foto_produk);
 
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
@@ -188,8 +200,14 @@ class AdminController extends Controller
     public function inventory()
     {
         $produk = DB::table('produk')->orderBy('nama_produk')->paginate(12);
+        $grades = DB::table('produk_grade as pg')
+            ->join('produk as p', 'p.id_produk', '=', 'pg.id_produk')
+            ->select('pg.id_produk_grade', 'pg.id_produk', 'pg.grade', 'pg.harga_per_kg', 'pg.stok_kg', 'p.nama_produk')
+            ->orderBy('p.nama_produk')
+            ->orderBy('pg.grade')
+            ->get();
 
-        return view('admin.inventory', compact('produk'));
+        return view('admin.inventory', compact('produk', 'grades'));
     }
 
     public function updateInventory(Request $request, int $id)
@@ -203,6 +221,31 @@ class AdminController extends Controller
         abort_if(! $updated && ! DB::table('produk')->where('id_produk', $id)->exists(), 404);
 
         return back()->with('success', 'Harga dan stok berhasil diperbarui.');
+    }
+
+    public function updateGradeInventory(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'harga_per_kg' => 'required|numeric|min:0|max:9999999999.99',
+            'stok_kg' => ['required', 'numeric', 'min:0', 'max:999999999.999', 'regex:/^\d+(?:\.\d{1,3})?$/'],
+        ]);
+
+        $updated = DB::table('produk_grade')->where('id_produk_grade', $id)->update($data);
+        abort_if(! $updated && ! DB::table('produk_grade')->where('id_produk_grade', $id)->exists(), 404);
+
+        return back()->with('success', 'Harga dan stok grade berhasil diperbarui.');
+    }
+
+    private function ensureProductGrades(int $idProduk): void
+    {
+        foreach (ProductCatalog::GRADE_PRICES as $grade => $price) {
+            DB::table('produk_grade')->insertOrIgnore([
+                'id_produk' => $idProduk,
+                'grade' => $grade,
+                'harga_per_kg' => $price,
+                'stok_kg' => 0,
+            ]);
+        }
     }
 
     public function orders()
@@ -324,7 +367,7 @@ class AdminController extends Controller
         $detailPesanan = DB::table('detail_pesanan as dp')
             ->leftJoin('produk as pr', 'pr.id_produk', '=', 'dp.id_produk')
             ->where('dp.id_pesanan', $id)
-            ->select('dp.jumlah', 'dp.harga', 'dp.subtotal', 'pr.nama_produk', 'pr.foto_produk')
+            ->select('dp.jumlah', 'dp.harga', 'dp.subtotal', 'dp.grade', 'dp.satuan', 'dp.berat_gram', 'pr.nama_produk', 'pr.foto_produk')
             ->get();
 
         return view('admin.order-detail', compact('pesanan', 'detailPesanan'));
@@ -332,7 +375,10 @@ class AdminController extends Controller
 
     public function paymentReviewPage(int $id)
     {
-        $pesanan = $this->orderQuery()->where('p.id_pesanan', $id)->first();
+        $pesanan = $this->orderQuery()
+            ->addSelect('pb.nama_pemilik_rekening_pengirim', 'pb.nomor_rekening_pengirim')
+            ->where('p.id_pesanan', $id)
+            ->first();
         abort_if(! $pesanan || ! $pesanan->status_pembayaran, 404);
 
         return view('admin.payment-review', compact('pesanan'));
@@ -602,7 +648,36 @@ class AdminController extends Controller
 
     public function printReports(Request $request)
     {
-        return view('admin.reports-print', $this->reportViewData($request, false));
+        $filterOptions = $this->reportFilterOptions();
+        $filters = $this->validateReportFilters($request, $filterOptions);
+        $from = $filters['dari'] ?? now()->startOfMonth()->toDateString();
+        $to = $filters['sampai'] ?? now()->toDateString();
+        $transaksi = $this->reportQuery($from, $to, $filters)
+            ->leftJoin('pelanggan as pl', 'pl.id_pelanggan', '=', 'p.id_pelanggan')
+            ->select(
+                'p.id_pesanan',
+                'p.tanggal_pemesanan',
+                'pl.nama_pelanggan',
+                'p.total_harga',
+                'p.ongkir',
+                DB::raw('CASE WHEN p.ongkir IS NULL THEN p.total_harga ELSE p.total_harga - p.ongkir END as subtotal_produk'),
+                'p.status_pesanan',
+                'pb.metode_pembayaran',
+                'pb.status_pembayaran'
+            )
+            ->orderBy(
+                [
+                    'tanggal' => 'p.tanggal_pemesanan',
+                    'pesanan' => 'p.id_pesanan',
+                    'total' => 'p.total_harga',
+                ][$filters['urutkan'] ?? 'tanggal'],
+                $filters['arah'] ?? 'desc'
+            )
+            ->orderByDesc('p.id_pesanan')
+            ->get();
+        $this->attachReportProductSummaries($transaksi);
+
+        return view('admin.reports-print', compact('transaksi', 'from', 'to'));
     }
 
     public function exportReports(Request $request)
@@ -626,6 +701,7 @@ class AdminController extends Controller
             )
             ->orderBy('p.tanggal_pemesanan')
             ->get();
+        $this->attachReportProductSummaries($rows);
 
         $directory = storage_path('framework/cache');
         File::ensureDirectoryExists($directory);
@@ -1157,13 +1233,50 @@ class AdminController extends Controller
         return $filters;
     }
 
-    
+    private function attachReportProductSummaries(iterable $orders): void
+    {
+        $orderIds = collect($orders)->pluck('id_pesanan');
+        $detailsByOrder = DB::table('detail_pesanan as dp')
+            ->leftJoin('produk as pr', 'pr.id_produk', '=', 'dp.id_produk')
+            ->whereIn('dp.id_pesanan', $orderIds)
+            ->select(
+                'dp.id_pesanan',
+                'dp.jumlah',
+                'dp.grade',
+                'dp.harga',
+                'dp.berat_gram',
+                'pr.nama_produk'
+            )
+            ->get()
+            ->groupBy('id_pesanan');
+
+        foreach ($orders as $order) {
+            $order->ringkasan_produk = ($detailsByOrder->get($order->id_pesanan) ?? collect())
+                ->map(function (object $detail): string {
+                    $name = $detail->nama_produk ?: 'Produk tidak tersedia';
+                    if ($detail->grade) {
+                        return $name.' Grade '.$detail->grade.' · '.$detail->jumlah.' kg × Rp'.number_format((float) $detail->harga, 0, ',', '.').'/kg';
+                    }
+
+                    $weight = $detail->berat_gram
+                        ? ' · '.$detail->berat_gram.' gram/kemasan'
+                        : '';
+
+                    $unit = $detail->berat_gram ? 'kemasan' : 'pcs';
+
+                    return $name.' · '.$detail->jumlah.' '.$unit.$weight.' × Rp'.number_format((float) $detail->harga, 0, ',', '.').'/'.$unit;
+                })
+                ->implode('; ');
+        }
+    }
+
 private function writeSalesWorkbook(string $filePath, iterable $rows, string $from, string $to): void
 {
     $headers = [
         'ID Pesanan',
         'Tanggal',
         'Pelanggan',
+        'Rincian Produk',
         'Subtotal Produk (Rp)',
         'Ongkir (Rp)',
         'Total Pembayaran (Rp)',
@@ -1184,6 +1297,7 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
                 'type' => 'string',
             ],
             ['value' => $row->nama_pelanggan ?? '', 'type' => 'string'],
+            ['value' => $row->ringkasan_produk ?? '', 'type' => 'string'],
             [
                 'value' => (float) ($row->subtotal_produk ?? $row->total_harga ?? 0),
                 'type' => 'number',
@@ -1268,48 +1382,26 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
 
     $lastRow = max(7, count($tableRows) + 7);
 
-    $password = 'SFS2026';
-    $passwordHash = 0;
-
-    for ($i = strlen($password) - 1; $i >= 0; $i--) {
-        $passwordHash = (($passwordHash >> 14) & 0x01)
-            | (($passwordHash << 1) & 0x7fff);
-        $passwordHash ^= ord($password[$i]);
-    }
-
-    $passwordHash = (($passwordHash >> 14) & 0x01)
-        | (($passwordHash << 1) & 0x7fff);
-    $passwordHash ^= strlen($password);
-    $passwordHash ^= 0xCE4B;
-
     $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
         .' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        .'<dimension ref="A1:J'.$lastRow.'"/>'
         .'<sheetViews><sheetView workbookViewId="0">'
         .'<pane ySplit="7" topLeftCell="A8" activePane="bottomLeft" state="frozen"/>'
+        .'<selection pane="bottomLeft" activeCell="A8" sqref="A8"/>'
         .'</sheetView></sheetViews>'
+        .'<sheetFormatPr defaultRowHeight="15"/>'
         .'<cols>'
         .'<col min="1" max="1" width="14" customWidth="1"/>'
         .'<col min="2" max="2" width="20" customWidth="1"/>'
         .'<col min="3" max="3" width="28" customWidth="1"/>'
-        .'<col min="4" max="4" width="22" customWidth="1"/>'
-        .'<col min="5" max="7" width="22" customWidth="1"/>'
+        .'<col min="4" max="4" width="55" customWidth="1"/>'
+        .'<col min="5" max="9" width="22" customWidth="1"/>'
+        .'<col min="10" max="10" width="22" customWidth="1"/>'
         .'</cols>'
         .'<sheetData>'.implode('', $worksheetRows).'</sheetData>'
-        .'<sheetProtection sheet="1" objects="1" scenarios="1"'
-        .' password="'.strtoupper(str_pad(dechex($passwordHash), 4, '0', STR_PAD_LEFT)).'"'
-        .' formatCells="1" formatColumns="1" formatRows="1"'
-        .' insertColumns="1" insertRows="1" insertHyperlinks="1"'
-        .' deleteColumns="1" deleteRows="1" sort="0" autoFilter="0"/>'
-        .'<autoFilter ref="A7:G'.$lastRow.'"/>'
-        .'<mergeCells count="5">'
-        .'<mergeCell ref="B1:G1"/>'
-        .'<mergeCell ref="B2:G2"/>'
-        .'<mergeCell ref="B3:G3"/>'
-        .'<mergeCell ref="A5:G5"/>'
-        .'<mergeCell ref="A6:G6"/>'
-        .'</mergeCells>'
-        .($hasLogo ? '<drawing r:id="rId1"/>' : '')
+        .'<autoFilter ref="A7:J'.$lastRow.'"/>'
+        .'<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'
         .'</worksheet>';
 
     $files = [
@@ -1321,10 +1413,6 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
             .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-            .($hasLogo
-                ? '<Default Extension="jpg" ContentType="image/jpeg"/>'
-                    .'<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>'
-                : '')
             .'</Types>',
 
         '_rels/.rels' =>
@@ -1336,6 +1424,7 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
         'xl/workbook.xml' =>
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            .'<bookViews><workbookView/></bookViews>'
             .'<sheets><sheet name="Laporan Penjualan" sheetId="1" r:id="rId1"/></sheets>'
             .'</workbook>',
 
@@ -1349,7 +1438,6 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
         'xl/styles.xml' =>
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            .'<numFmts count="1"><numFmt numFmtId="164" formatCode=\'&quot;Rp&quot; #,##0.00\'/></numFmts>'
             .'<fonts count="4">'
             .'<font><name val="Arial"/><sz val="11"/></font>'
             .'<font><name val="Arial"/><b/><color rgb="FFFFFFFF"/><sz val="11"/></font>'
@@ -1369,7 +1457,7 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
             .'<cellXfs count="5">'
             .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
             .'<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyAlignment="1"><alignment vertical="center" horizontal="center" wrapText="1"/></xf>'
-            .'<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1"/>'
+            .'<xf numFmtId="3" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1"/>'
             .'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf>'
             .'<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
             .'</cellXfs>'
@@ -1456,7 +1544,9 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
 
     private function escapeXml(string $value): string
     {
-        return htmlspecialchars($value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+        $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value) ?? '';
+
+        return htmlspecialchars($value, ENT_XML1 | ENT_COMPAT | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     private function storeProductImage(Request $request): ?string
