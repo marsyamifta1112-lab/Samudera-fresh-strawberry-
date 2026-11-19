@@ -1511,50 +1511,138 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
 
     $files['xl/media/logo-samudera.jpg'] = $logoContents;
 
-    if (class_exists(\ZipArchive::class)) {
-        $zip = new \ZipArchive();
-        $result = $zip->open($filePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+    $this->writeZipArchive($filePath, $files);
+}
 
-        if ($result !== true) {
-            @unlink($filePath);
+    private function writeZipArchive(string $filePath, array $files): void
+    {
+        $entryCount = count($files);
+
+        if ($entryCount > 0xffff) {
+            throw new \RuntimeException('Laporan Excel terlalu besar untuk format ZIP standar.');
+        }
+
+        $stream = fopen($filePath, 'wb');
+
+        if ($stream === false) {
             throw new \RuntimeException('Tidak dapat membangun file Excel laporan.');
         }
 
-        foreach ($files as $name => $contents) {
-            if (! $zip->addFromString($name, $contents)) {
-                $zip->close();
-                @unlink($filePath);
-                throw new \RuntimeException('Gagal menulis bagian '.$name.' pada file Excel.');
+        $centralDirectory = '';
+        $offset = 0;
+
+        try {
+            foreach ($files as $name => $contents) {
+                $nameLength = strlen($name);
+                $contentsLength = strlen($contents);
+
+                if ($nameLength > 0xffff || $contentsLength > 0xffffffff || $offset > 0xffffffff) {
+                    throw new \RuntimeException('Laporan Excel terlalu besar untuk format ZIP standar.');
+                }
+
+                $crc = crc32($contents);
+                $localHeader = pack(
+                    'VvvvvvVVVvv',
+                    0x04034B50,
+                    20,
+                    0,
+                    0,
+                    0,
+                    33,
+                    $crc,
+                    $contentsLength,
+                    $contentsLength,
+                    $nameLength,
+                    0
+                );
+
+                $this->writeZipBytes($stream, $localHeader);
+                $this->writeZipBytes($stream, $name);
+                $this->writeZipBytes($stream, $contents);
+
+                $centralDirectory .= pack(
+                    'VvvvvvvVVVvvvvvVV',
+                    0x02014B50,
+                    20,
+                    20,
+                    0,
+                    0,
+                    0,
+                    33,
+                    $crc,
+                    $contentsLength,
+                    $contentsLength,
+                    $nameLength,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    $offset
+                ) . $name;
+
+                $offset += strlen($localHeader) + $nameLength + $contentsLength;
             }
+
+            $centralDirectoryLength = strlen($centralDirectory);
+
+            if (
+                $offset > 0xffffffff
+                || $centralDirectoryLength > 0xffffffff
+                || $offset + $centralDirectoryLength > 0xffffffff
+            ) {
+                throw new \RuntimeException('Laporan Excel terlalu besar untuk format ZIP standar.');
+            }
+
+            $centralDirectoryOffset = $offset;
+            $this->writeZipBytes($stream, $centralDirectory);
+            $this->writeZipBytes(
+                $stream,
+                pack(
+                    'VvvvvVVv',
+                    0x06054B50,
+                    0,
+                    0,
+                    $entryCount,
+                    $entryCount,
+                    $centralDirectoryLength,
+                    $centralDirectoryOffset,
+                    0
+                )
+            );
+
+            if (! fflush($stream)) {
+                throw new \RuntimeException('Gagal menyelesaikan file Excel laporan.');
+            }
+        } catch (\Throwable $exception) {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+
+            @unlink($filePath);
+            throw $exception;
         }
 
-        if (! $zip->close()) {
+        if (! fclose($stream)) {
             @unlink($filePath);
             throw new \RuntimeException('Gagal menyelesaikan file Excel laporan.');
         }
-
-        return;
     }
 
-    if (! class_exists(\PharData::class)) {
-        @unlink($filePath);
-        throw new \RuntimeException('Ekspor Excel memerlukan ekstensi PHP zip atau phar.');
-    }
+    private function writeZipBytes($stream, string $contents): void
+    {
+        $length = strlen($contents);
 
-    try {
-        $archive = new \PharData($filePath, 0, null, \Phar::ZIP);
+        for ($offset = 0; $offset < $length;) {
+            $written = fwrite($stream, substr($contents, $offset));
 
-        foreach ($files as $name => $contents) {
-            $archive->addFromString($name, $contents);
+            if ($written === false || $written === 0) {
+                throw new \RuntimeException('Gagal menulis bagian pada file Excel.');
+            }
+
+            $offset += $written;
         }
-
-        unset($archive);
-    } catch (\Throwable $exception) {
-        unset($archive);
-        @unlink($filePath);
-        throw $exception;
     }
-}
 
     private function escapeXml(string $value): string
     {
