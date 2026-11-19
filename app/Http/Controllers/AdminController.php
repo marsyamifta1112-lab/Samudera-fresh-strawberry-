@@ -1272,6 +1272,24 @@ class AdminController extends Controller
 
 private function writeSalesWorkbook(string $filePath, iterable $rows, string $from, string $to): void
 {
+    $logoPath = public_path('images/logo samudera.jpeg');
+
+    if (! is_file($logoPath)) {
+        throw new \RuntimeException('Logo laporan Excel tidak ditemukan.');
+    }
+
+    $logoContents = file_get_contents($logoPath);
+
+    if ($logoContents === false) {
+        throw new \RuntimeException('Tidak dapat membaca logo laporan Excel.');
+    }
+
+    $logoImageInfo = getimagesizefromstring($logoContents);
+
+    if ($logoImageInfo === false || $logoImageInfo[2] !== IMAGETYPE_JPEG) {
+        throw new \RuntimeException('Logo laporan Excel bukan gambar JPEG yang valid.');
+    }
+
     $headers = [
         'ID Pesanan',
         'Tanggal',
@@ -1399,6 +1417,7 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
         .'<sheetData>'.implode('', $worksheetRows).'</sheetData>'
         .'<autoFilter ref="A7:J'.$lastRow.'"/>'
         .'<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'
+        .'<drawing r:id="rId1"/>'
         .'</worksheet>';
 
     $files = [
@@ -1407,9 +1426,11 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
             .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
             .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
             .'<Default Extension="xml" ContentType="application/xml"/>'
+            .'<Default Extension="jpg" ContentType="image/jpeg"/>'
             .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            .'<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>'
             .'</Types>',
 
         '_rels/.rels' =>
@@ -1456,13 +1477,39 @@ private function writeSalesWorkbook(string $filePath, iterable $rows, string $fr
             .'<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyAlignment="1"><alignment vertical="center" horizontal="center" wrapText="1"/></xf>'
             .'<xf numFmtId="3" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1"/>'
             .'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf>'
-            .'<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            .'<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf>'
             .'</cellXfs>'
             .'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
             .'</styleSheet>',
 
         'xl/worksheets/sheet1.xml' => $sheetXml,
     ];
+
+    $files['xl/worksheets/_rels/sheet1.xml.rels'] =
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'
+        .'</Relationships>';
+
+    $files['xl/drawings/drawing1.xml'] =
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        ."\n"
+        .'<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        .'<xdr:oneCellAnchor>'
+        .'<xdr:from><xdr:col>0</xdr:col><xdr:colOff>50000</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>50000</xdr:rowOff></xdr:from>'
+        .'<xdr:ext cx="450000" cy="450000"/>'
+        .'<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo Samudera Fresh Strawberry"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+        .'<xdr:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+        .'<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="450000" cy="450000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
+        .'</xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>';
+
+    $files['xl/drawings/_rels/drawing1.xml.rels'] =
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo-samudera.jpg"/>'
+        .'</Relationships>';
+
+    $files['xl/media/logo-samudera.jpg'] = $logoContents;
 
     if (class_exists(\ZipArchive::class)) {
         $zip = new \ZipArchive();

@@ -1095,11 +1095,14 @@ class AdminTest extends TestCase
         $downloadResponse = $response->baseResponse;
         $this->assertInstanceOf(\Symfony\Component\HttpFoundation\BinaryFileResponse::class, $downloadResponse);
         $workbook = new \PharData($downloadResponse->getFile()->getPathname(), 0, null, \Phar::ZIP);
-        $this->assertFalse(isset($workbook['xl/drawings/drawing1.xml']));
-        $this->assertFalse(isset($workbook['xl/media/logo-samudera.jpg']));
+        $logoPath = public_path('images/logo samudera.jpeg');
+        $this->assertFileExists($logoPath);
+        $this->assertTrue(isset($workbook['xl/drawings/drawing1.xml']));
+        $this->assertTrue(isset($workbook['xl/media/logo-samudera.jpg']));
         $sheet = $workbook['xl/worksheets/sheet1.xml']->getContent();
         $this->assertIsString($sheet);
         $this->assertStringContainsString('LAPORAN PENJUALAN', $sheet);
+        $this->assertStringContainsString('<drawing r:id="rId1"/>', $sheet);
         $this->assertStringContainsString('Subtotal Produk (Rp)', $sheet);
         $this->assertStringContainsString('Ongkir (Rp)', $sheet);
         $sheetElementPositions = array_map(
@@ -1113,7 +1116,23 @@ class AdminTest extends TestCase
         $this->assertStringContainsString('Pelanggan Mei', $sheet);
         $this->assertStringContainsString('BCA', $sheet);
         $this->assertStringNotContainsString('Pelanggan April', $sheet);
-        $this->assertStringNotContainsString('<drawing ', $sheet);
+        $this->assertStringContainsString(
+            'Target="../drawings/drawing1.xml"',
+            $workbook['xl/worksheets/_rels/sheet1.xml.rels']->getContent()
+        );
+        $drawing = $workbook['xl/drawings/drawing1.xml']->getContent();
+        $this->assertIsString($drawing);
+        $this->assertStringContainsString('<a:picLocks noChangeAspect="1"/>', $drawing);
+        $this->assertStringContainsString('<a:xfrm>', $drawing);
+        $this->assertStringContainsString(
+            'Target="../media/logo-samudera.jpg"',
+            $workbook['xl/drawings/_rels/drawing1.xml.rels']->getContent()
+        );
+        $logoContents = $workbook['xl/media/logo-samudera.jpg']->getContent();
+        $this->assertSame(file_get_contents($logoPath), $logoContents);
+        $logoImageInfo = getimagesizefromstring($logoContents);
+        $this->assertIsArray($logoImageInfo);
+        $this->assertSame(IMAGETYPE_JPEG, $logoImageInfo[2]);
         $styles = $workbook['xl/styles.xml']->getContent();
         $this->assertIsString($styles);
         $this->assertStringContainsString('<font><name val="Arial"/><b/><color rgb="FFFFFFFF"/><sz val="11"/></font>', $styles);
@@ -1124,7 +1143,13 @@ class AdminTest extends TestCase
             'xl/_rels/workbook.xml.rels',
             'xl/styles.xml',
             'xl/worksheets/sheet1.xml',
+            'xl/worksheets/_rels/sheet1.xml.rels',
+            'xl/drawings/drawing1.xml',
+            'xl/drawings/_rels/drawing1.xml.rels',
         ];
+        $contentTypes = $workbook['[Content_Types].xml']->getContent();
+        $this->assertStringContainsString('Extension="jpg" ContentType="image/jpeg"', $contentTypes);
+        $this->assertStringContainsString('/xl/drawings/drawing1.xml', $contentTypes);
         foreach ($xmlParts as $part) {
             $xml = $workbook[$part]->getContent();
             $this->assertIsString($xml);
